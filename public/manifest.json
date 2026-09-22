@@ -1,22 +1,21 @@
 {
+  "author": "Fury",
+  "name": "Schedule Auto-Tagger",
+  "description": "Automatically tags schedule Rems by level",
+  "enableOnMobile": false,
+  "id": "Fury-q4qz3k0",
   "manifestVersion": 1,
-  "id": "plugin_template",
-  "name": "Plugin Template",
-  "author": "remnote",
-  "repoUrl": "",
+  "repoUrl": "https://github.com/kseniadmay/remnote-plugin-template-react",
   "version": {
     "major": 0,
     "minor": 0,
     "patch": 1
   },
-  "theme": [],
-  "enableOnMobile": false,
-  "description": "",
   "requestNative": false,
   "requiredScopes": [
     {
       "type": "All",
-      "level": "Read"
+      "level": "ReadCreateModify"
     }
   ]
 }

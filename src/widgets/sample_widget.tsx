@@ -1,11 +1,11 @@
-import { usePlugin, renderWidget, useTracker } from '@remnote/plugin-sdk';
+import { usePlugin, renderWidget, useTrackerPlugin } from '@remnote/plugin-sdk';
 
 export const SampleWidget = () => {
   const plugin = usePlugin();
 
-  let name = useTracker(() => plugin.settings.getSetting<string>('name'));
-  let likesPizza = useTracker(() => plugin.settings.getSetting<boolean>('pizza'));
-  let favoriteNumber = useTracker(() => plugin.settings.getSetting<number>('favorite-number'));
+  let name = useTrackerPlugin(() => plugin.settings.getSetting<string>('name'));
+  let likesPizza = useTrackerPlugin(() => plugin.settings.getSetting<boolean>('pizza'));
+  let favoriteNumber = useTrackerPlugin(() => plugin.settings.getSetting<number>('favorite-number'));
 
   return (
     <div className="p-2 m-2 rounded-lg rn-clr-background-light-positive rn-clr-content-positive">
