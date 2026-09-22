@@ -13,10 +13,10 @@ const FIXED_STEPS_DAYS = [1, 3, 7, 21, 30, 60, 90, 180, 360];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 async function registerFixedScheduler(plugin: ReactRNPlugin) {
-  // Регистрирует расписание в настройках RemNote
-  await plugin.scheduler.registerCustomScheduler('Расписание повторений 1-3-7-21-30', []);
+  // Регистрирует планировщик (основное имя) и синоним в настройках RemNote
+  await plugin.scheduler.registerCustomScheduler('Планировщик повторений 1-3-7-21-30', []);
   try {
-    await plugin.scheduler.registerCustomScheduler('Планировщик повторений 1-3-7-21-30', []);
+    await plugin.scheduler.registerCustomScheduler('Расписание повторений 1-3-7-21-30', []);
     await plugin.scheduler.registerCustomScheduler('Fixed 1-3-7-21-30', []);
   } catch (_) {}
 
@@ -101,9 +101,9 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   await plugin.settings.registerStringSetting({
     id: API_KEY_SETTING,
-    title: 'Anthropic API key (sk-ant-...)',
+    title: 'Anthropic API key (для ИИ Claude)',
     description:
-      'Хранится локально в настройках плагина. НЕ маскируется в UI RemNote — не используйте это на общем компьютере.',
+      'Требуется ТОЛЬКО для функции обновления описаний карточек через Claude AI. Доступ к API Claude платный (тарифицируется по токенам на console.anthropic.com). Для работы самого планировщика повторений ключ НЕ нужен.',
   });
   await plugin.settings.registerStringSetting({
     id: MODEL_SETTING,
