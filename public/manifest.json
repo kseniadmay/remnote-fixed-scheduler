@@ -1,15 +1,15 @@
 {
-  "author": "Fury",
-  "name": "Schedule Auto-Tagger",
-  "description": "Automatically tags schedule Rems by level",
+  "author": "kseniadmay",
+  "name": "Шедулер повторений 1-3-7-21-30",
+  "description": "Фиксированный график интервального повторения (1, 3, 7, 21, 30 дней) и обновление описаний карточек через Claude",
   "enableOnMobile": false,
-  "id": "Fury-q4qz3k0",
+  "id": "kseniadmay-fixed-scheduler",
   "manifestVersion": 1,
   "repoUrl": "https://github.com/kseniadmay/remnote-fixed-scheduler",
   "version": {
     "major": 0,
-    "minor": 0,
-    "patch": 1
+    "minor": 1,
+    "patch": 0
   },
   "requestNative": false,
   "requiredScopes": [
