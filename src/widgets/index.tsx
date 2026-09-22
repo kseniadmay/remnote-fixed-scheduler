@@ -13,8 +13,12 @@ const FIXED_STEPS_DAYS = [1, 3, 7, 21, 30, 60, 90, 180, 360];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 async function registerFixedScheduler(plugin: ReactRNPlugin) {
-  // Регистрирует шедулер в Settings > Schedulers
-  await plugin.scheduler.registerCustomScheduler('Fixed 1-3-7-21-30', []);
+  // Регистрирует расписание в настройках RemNote
+  await plugin.scheduler.registerCustomScheduler('Расписание повторений 1-3-7-21-30', []);
+  try {
+    await plugin.scheduler.registerCustomScheduler('Планировщик повторений 1-3-7-21-30', []);
+    await plugin.scheduler.registerCustomScheduler('Fixed 1-3-7-21-30', []);
+  } catch (_) {}
 
   // Вызывается RemNote при каждом ревью карточки с этим шедулером
   plugin.app.registerCallback(SpecialPluginCallback.SRSScheduleCard, async (args: any) => {

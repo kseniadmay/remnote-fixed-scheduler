@@ -1,6 +1,6 @@
 {
   "author": "kseniadmay",
-  "name": "Шедулер повторений 1-3-7-21-30",
+  "name": "Расписание повторений 1-3-7-21-30",
   "description": "Фиксированный график интервального повторения (1, 3, 7, 21, 30 дней) и обновление описаний карточек через Claude",
   "enableOnMobile": false,
   "id": "kseniadmay-fixed-scheduler",
@@ -9,7 +9,7 @@
   "version": {
     "major": 0,
     "minor": 1,
-    "patch": 0
+    "patch": 1
   },
   "requestNative": false,
   "requiredScopes": [
