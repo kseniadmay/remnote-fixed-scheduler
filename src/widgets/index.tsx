@@ -265,16 +265,17 @@ async function onActivate(plugin: ReactRNPlugin) {
         let idx = 1;
         for (const child of children) {
           const cText = (await plugin.richText.toString(child.text || [])).trim();
+          if (!cText || cText === '📚 Конспекты' || cText === 'Конспекты') continue;
+
           const match = cText.match(/^(\d+)\.\s*(.+)$/);
-          if (match) {
-            const oldNum = parseInt(match[1], 10);
-            const titleBody = match[2];
-            const newNumStr = String(idx).padStart(2, '0');
-            if (oldNum !== idx) {
-              const newTitle = `${newNumStr}. ${titleBody}`;
-              await child.setText(await plugin.richText.text(newTitle).value());
-              renumberedCount++;
-            }
+          const titleBody = match ? match[2].trim() : cText;
+          const oldNum = match ? parseInt(match[1], 10) : null;
+          const newNumStr = String(idx).padStart(2, '0');
+
+          if (oldNum !== idx) {
+            const newTitle = `${newNumStr}. ${titleBody}`;
+            await child.setText(await plugin.richText.text(newTitle).value());
+            renumberedCount++;
           }
           await child.setIsDocument(true);
           await child.setIsFolder(false);
@@ -282,6 +283,7 @@ async function onActivate(plugin: ReactRNPlugin) {
           idx++;
         }
       } else {
+
         for (const child of children) {
           await processNode(child, depth + 1);
         }
