@@ -3,37 +3,76 @@ import {
   ReactRNPlugin,
   PluginRem,
   SpecialPluginCallback,
+  BuiltInPowerupCodes,
+  WidgetLocation,
+  PluginCommandMenuLocation,
 } from '@remnote/plugin-sdk';
 
 // ============================================================
 // Часть 1: Жёсткий график повторения 1-3-7-21-30 и далее
 // ============================================================
 
+// Шаги интервалов (в днях):
+// Исходное добавление в цикл: через 1 день (завтра)
+// После 1-го ревью: через 3 дня
+// После 2-го ревью: через 7 дней
+// После 3-го ревью: через 21 день
+// После 4-го ревью: через 30 дней
+// Далее: 60, 90, 180, 360 дней
 const FIXED_STEPS_DAYS = [1, 3, 7, 21, 30, 60, 90, 180, 360];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 async function registerFixedScheduler(plugin: ReactRNPlugin) {
-  // Регистрирует планировщик (основное имя) и синоним в настройках RemNote
+  // Регистрирует планировщик (основное имя) и синонимы в настройках RemNote
   await plugin.scheduler.registerCustomScheduler('Планировщик повторений 1-3-7-21-30', []);
   try {
     await plugin.scheduler.registerCustomScheduler('Расписание повторений 1-3-7-21-30', []);
     await plugin.scheduler.registerCustomScheduler('Fixed 1-3-7-21-30', []);
   } catch (_) {}
 
-  // Вызывается RemNote при каждом ревью карточки с этим шедулером
+  // Вызывается RemNote при каждом ревью карточки с этим планировщиком
   plugin.app.registerCallback(SpecialPluginCallback.SRSScheduleCard, async (args: any) => {
-    const repsSoFar = args.history?.length ?? 0; // включая только что прошедшее ревью
+    // repsSoFar включает только что завершённое ревью
+    const repsSoFar = args.history?.length ?? 1;
     let days: number;
-    if (repsSoFar <= FIXED_STEPS_DAYS.length) {
-      const stepIndex = Math.max(repsSoFar - 1, 0);
-      days = FIXED_STEPS_DAYS[stepIndex];
+
+    if (repsSoFar < FIXED_STEPS_DAYS.length) {
+      days = FIXED_STEPS_DAYS[repsSoFar];
     } else {
-      // Если повторений больше, удваиваем предыдущий интервал
-      const extraSteps = repsSoFar - FIXED_STEPS_DAYS.length;
+      const extraSteps = repsSoFar - (FIXED_STEPS_DAYS.length - 1);
       days = FIXED_STEPS_DAYS[FIXED_STEPS_DAYS.length - 1] * Math.pow(2, extraSteps);
     }
+
     return { nextDate: Date.now() + days * DAY_MS };
   });
+}
+
+// Вспомогательная функция: активировать повторение для конспекта
+async function activateNoteRepetition(plugin: ReactRNPlugin, rem: PluginRem) {
+  // 1. Снимаем статус отключения карточек с документа
+  if (await rem.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+    await rem.removePowerup(BuiltInPowerupCodes.DisableCards);
+  }
+
+  // 2. Снимаем паузу со всех дочерних карточек
+  const children = await rem.getChildrenRem();
+  for (const child of children) {
+    if (await child.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+      await child.removePowerup(BuiltInPowerupCodes.DisableCards);
+    }
+  }
+
+  const title = (await plugin.richText.toString(rem.text || [])).slice(0, 50);
+  await plugin.app.toast(
+    `✅ Конспект «${title}» активирован! Первое повторение запланировано на завтра (1-3-7-21-30).`
+  );
+}
+
+// Вспомогательная функция: приостановить повторение конспекта
+async function pauseNoteRepetition(plugin: ReactRNPlugin, rem: PluginRem) {
+  await rem.addPowerup(BuiltInPowerupCodes.DisableCards);
+  const title = (await plugin.richText.toString(rem.text || [])).slice(0, 50);
+  await plugin.app.toast(`⏸️ Конспект «${title}» приостановлен и исключён из очереди повторений.`);
 }
 
 // ============================================================
@@ -67,7 +106,7 @@ function buildPrompt(pairs: { front: string; back: string }[]): string {
 async function callClaude(
   apiKey: string,
   model: string,
-  pairs: { front: string; back: string }[],
+  pairs: { front: string; back: string }[]
 ): Promise<{ i: number; front: string; back: string }[]> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -92,13 +131,88 @@ async function callClaude(
   return JSON.parse(cleaned);
 }
 
+// ============================================================
+// Точка входа плагина
+// ============================================================
+
 async function onActivate(plugin: ReactRNPlugin) {
+  // 1. Регистрация алгоритма повторения
   try {
     await registerFixedScheduler(plugin);
   } catch (e) {
     console.warn('[Fixed Scheduler] registerFixedScheduler failed:', e);
   }
 
+  // 2. Регистрация виджета в шапке открытого документа
+  try {
+    await plugin.app.registerWidget(
+      'note_scheduler_bar',
+      WidgetLocation.DocumentBelowTitle,
+      {
+        dimensions: { height: 'auto', width: '100%' },
+      }
+    );
+  } catch (e) {
+    console.warn('[Fixed Scheduler] registerWidget failed:', e);
+  }
+
+  // 3. Команда: Отметить конспект прочитанным (запустить повторение)
+  await plugin.app.registerCommand({
+    id: 'activate-note-spaced-repetition',
+    name: 'Конспект прочитан — поставить на повторение (1-3-7-21-30)',
+    action: async () => {
+      const root = await plugin.focus.getFocusedRem();
+      if (!root) {
+        await plugin.app.toast('Откройте конспект и повторите команду');
+        return;
+      }
+      await activateNoteRepetition(plugin, root);
+    },
+  });
+
+  // Меню документа: Запустить повторение
+  try {
+    await plugin.app.registerMenuItem({
+      id: 'menu-activate-note-spaced-repetition',
+      name: '📖 Конспект прочитан — запустить повторение (1-3-7-21-30)',
+      location: PluginCommandMenuLocation.DocumentMenu,
+      action: async (args: any) => {
+        const remId = args?.remId;
+        const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
+        if (rem) await activateNoteRepetition(plugin, rem);
+      },
+    });
+  } catch (_) {}
+
+  // 4. Команда: Приостановить повторение конспекта
+  await plugin.app.registerCommand({
+    id: 'pause-note-spaced-repetition',
+    name: 'Приостановить повторение конспекта',
+    action: async () => {
+      const root = await plugin.focus.getFocusedRem();
+      if (!root) {
+        await plugin.app.toast('Откройте конспект и повторите команду');
+        return;
+      }
+      await pauseNoteRepetition(plugin, root);
+    },
+  });
+
+  // Меню документа: Приостановить повторение
+  try {
+    await plugin.app.registerMenuItem({
+      id: 'menu-pause-note-spaced-repetition',
+      name: '⏸️ Приостановить повторение конспекта',
+      location: PluginCommandMenuLocation.DocumentMenu,
+      action: async (args: any) => {
+        const remId = args?.remId;
+        const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
+        if (rem) await pauseNoteRepetition(plugin, rem);
+      },
+    });
+  } catch (_) {}
+
+  // 5. Настройки Claude AI
   await plugin.settings.registerStringSetting({
     id: API_KEY_SETTING,
     title: 'Anthropic API key (для ИИ Claude)',
@@ -112,12 +226,14 @@ async function onActivate(plugin: ReactRNPlugin) {
     description: 'См. актуальный список моделей на docs.claude.com',
   });
 
+  // 6. Команда Claude AI
   await plugin.app.registerCommand({
     id: 'smart-edit-cards',
     name: 'Обновить описания карточек в этой папке (Claude)',
     action: async () => {
       const apiKey = await plugin.settings.getSetting<string>(API_KEY_SETTING);
       const model = (await plugin.settings.getSetting<string>(MODEL_SETTING)) || 'claude-sonnet-5';
+
       if (!apiKey) {
         await plugin.app.toast('Сначала укажите Anthropic API key в настройках плагина');
         return;
@@ -128,7 +244,6 @@ async function onActivate(plugin: ReactRNPlugin) {
         return;
       }
 
-      // Собрать все карточки поддерева
       const raw: PluginRem[] = [];
       await (async function collect(r: PluginRem) {
         if (r.backText && r.backText.length > 0) raw.push(r);
@@ -153,13 +268,13 @@ async function onActivate(plugin: ReactRNPlugin) {
       for (let start = 0; start < cards.length; start += BATCH_SIZE) {
         const batch = cards.slice(start, start + BATCH_SIZE);
         await plugin.app.toast(
-          `Обрабатываю карточки ${start + 1}–${Math.min(start + BATCH_SIZE, cards.length)} из ${cards.length}…`,
+          `Обрабатываю карточки ${start + 1}–${Math.min(start + BATCH_SIZE, cards.length)} из ${cards.length}…`
         );
         try {
           const rewritten = await callClaude(
             apiKey,
             model,
-            batch.map((c) => ({ front: c.front, back: c.back })),
+            batch.map((c) => ({ front: c.front, back: c.back }))
           );
           for (const item of rewritten) {
             const card = batch[item.i];
