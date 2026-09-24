@@ -226,7 +226,103 @@ async function onActivate(plugin: ReactRNPlugin) {
     description: 'См. актуальный список моделей на docs.claude.com',
   });
 
-  // 6. Команда Claude AI
+  // 6. Команда: Сделать папки папками, а конспекты документами (и исправить нумерацию)
+  async function organizeRemStructure(plugin: ReactRNPlugin, rootRem?: PluginRem) {
+    const target = rootRem || (await plugin.focus.getFocusedRem());
+    if (!target) {
+      await plugin.app.toast('Откройте папку или конспект и повторите команду');
+      return;
+    }
+
+    let foldersCount = 0;
+    let docsCount = 0;
+    let renumberedCount = 0;
+
+    await plugin.app.toast('Начинаю организацию структуры: папки -> папки, конспекты -> документы...');
+
+    async function processNode(rem: PluginRem, depth: number) {
+      const textStr = (await plugin.richText.toString(rem.text || [])).trim();
+      const children = await rem.getChildrenRem();
+
+      const isFolderContainer =
+        /^(?:0\d\s*·|\d+\s*·|Модуль|Юнит|📚|📇|База|Собеседован|Конспект|Карточ)/i.test(textStr) ||
+        (children.length > 0 && depth <= 3);
+
+      if (isFolderContainer) {
+        await rem.setIsFolder(true);
+        await rem.setIsDocument(false);
+        foldersCount++;
+      } else {
+        if (!rem.backText || rem.backText.length === 0) {
+          await rem.setIsDocument(true);
+          await rem.setIsFolder(false);
+          docsCount++;
+        }
+      }
+
+      // Если это папка конспектов (или юнит с конспектами) — выравниваем нумерацию
+      if (textStr.includes('Конспект') || textStr.includes('Теория')) {
+        let idx = 1;
+        for (const child of children) {
+          const cText = (await plugin.richText.toString(child.text || [])).trim();
+          const match = cText.match(/^(\d+)\.\s*(.+)$/);
+          if (match) {
+            const oldNum = parseInt(match[1], 10);
+            const titleBody = match[2];
+            const newNumStr = String(idx).padStart(2, '0');
+            if (oldNum !== idx) {
+              const newTitle = `${newNumStr}. ${titleBody}`;
+              await child.setText(await plugin.richText.text(newTitle).value());
+              renumberedCount++;
+            }
+          }
+          await child.setIsDocument(true);
+          await child.setIsFolder(false);
+          docsCount++;
+          idx++;
+        }
+      } else {
+        for (const child of children) {
+          await processNode(child, depth + 1);
+        }
+      }
+    }
+
+    try {
+      await processNode(target, 0);
+      await plugin.app.toast(
+        `✅ Готово! Организовано папок: ${foldersCount}, документов: ${docsCount}, исправлено номеров: ${renumberedCount}`
+      );
+    } catch (e) {
+      console.error('organizeRemStructure failed:', e);
+      await plugin.app.toast(`Ошибка при организации: ${String(e)}`);
+    }
+  }
+
+  // Регистрация команды в палитре (Ctrl+K)
+  await plugin.app.registerCommand({
+    id: 'organize-folders-and-docs',
+    name: '📁 Организовать: сделать папки папками, а конспекты документами (исправить номера)',
+    action: async () => {
+      await organizeRemStructure(plugin);
+    },
+  });
+
+  // Меню документа
+  try {
+    await plugin.app.registerMenuItem({
+      id: 'menu-organize-folders-and-docs',
+      name: '📁 Организовать папки и документы (исправить номера)',
+      location: PluginCommandMenuLocation.DocumentMenu,
+      action: async (args: any) => {
+        const remId = args?.remId;
+        const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
+        if (rem) await organizeRemStructure(plugin, rem);
+      },
+    });
+  } catch (_) {}
+
+  // 7. Команда Claude AI
   await plugin.app.registerCommand({
     id: 'smart-edit-cards',
     name: 'Обновить описания карточек в этой папке (Claude)',
