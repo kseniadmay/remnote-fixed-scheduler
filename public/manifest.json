@@ -1,24 +1,24 @@
 {
-  "author": "kseniadmay",
-  "name": "Планировщик повторений 1-3-7-21-30",
-  "description": "Фиксированный график интервального повторения (1, 3, 7, 21, 30 дней) и обновление описаний карточек через Claude AI",
-  "enableOnMobile": false,
-  "id": "kseniadmay-fixed-scheduler",
   "manifestVersion": 1,
+  "id": "Fury-q4qz3k0",
+  "name": "Планировщик повторений 1-3-7-21-30",
+  "author": "Fury",
+  "description": "Фиксированный график интервального повторения (1, 3, 7, 21, 30 дней) и обновление описаний карточек через Claude AI",
   "repoUrl": "https://github.com/kseniadmay/remnote-fixed-scheduler",
   "version": {
     "major": 0,
     "minor": 1,
     "patch": 6
-
-
-
   },
+  "enableOnMobile": false,
   "requestNative": false,
   "requiredScopes": [
     {
       "type": "All",
       "level": "ReadCreateModify"
     }
+  ],
+  "widgets": [
+    "note_scheduler_bar"
   ]
 }

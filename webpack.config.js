@@ -112,13 +112,49 @@ if (isProd) {
   // for more information, see https://webpack.js.org/configuration/dev-server
   config.devServer = {
     port: 8080,
-    open: true,
+    host: '0.0.0.0',
+    allowedHosts: 'all',
+    open: false,
     hot: true,
     compress: true,
     watchFiles: ['src/*'],
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'baggage, sentry-trace',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Private-Network': 'true',
+    },
+    setupMiddlewares: (middlewares, devServer) => {
+      const fs = require('fs');
+      const path = require('path');
+
+      devServer.app.use((req, res, next) => {
+        const origin = req.headers.origin || '*';
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        res.setHeader('Access-Control-Allow-Private-Network', 'true');
+        if (req.method === 'OPTIONS') {
+          res.sendStatus(200);
+          return;
+        }
+        next();
+      });
+
+      devServer.app.get('/manifest.json', (req, res) => {
+        const origin = req.headers.origin || '*';
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        res.setHeader('Access-Control-Allow-Private-Network', 'true');
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        const manifestPath = path.resolve(__dirname, 'public/manifest.json');
+        res.send(fs.readFileSync(manifestPath, 'utf8'));
+      });
+
+      return middlewares;
     },
   };
 }
