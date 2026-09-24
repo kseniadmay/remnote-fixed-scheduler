@@ -7,8 +7,8 @@
   "repoUrl": "https://github.com/kseniadmay/remnote-fixed-scheduler",
   "version": {
     "major": 0,
-    "minor": 1,
-    "patch": 6
+    "minor": 2,
+    "patch": 0
   },
   "enableOnMobile": false,
   "requestNative": false,
