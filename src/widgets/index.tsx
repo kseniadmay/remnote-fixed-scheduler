@@ -641,14 +641,27 @@ async function onActivate(plugin: ReactRNPlugin) {
     try {
       await plugin.app.toast('🪄 Начинаем причесывать конспект...');
 
-      // 1. Получаем все узлы конспекта на любой глубине (снимок дерева)
       const allRemList = await target.getDescendants();
       if (!allRemList || allRemList.length === 0) {
         await plugin.app.toast('Конспект пуст');
         return;
       }
 
-      function isAsciiDiagramLine(text: string): boolean {
+      function cleanHeadingTitle(raw: string): string {
+        let s = raw.trim();
+        // Убираем решетки и пробелы в начале
+        s = s.replace(/^[#\s]+/, '');
+        while (s.startsWith('##') || s.startsWith('#')) {
+          s = s.replace(/^[#\s]+/, '');
+        }
+        // Убираем любые эмодзи в начале заголовка
+        s = s.replace(/^[\p{Emoji}\u200d\ufe0f\s]+/u, '');
+        // Убираем лишние знаки препинания в начале
+        s = s.replace(/^[^\w\sа-яА-ЯёЁa-zA-Z0-9]+\s*/, '');
+        return s.trim();
+      }
+
+      function isAsciiDiagram(text: string): boolean {
         if (!text) return false;
         if (/---|\/|\\|-->|==>|<-|<--/.test(text)) return true;
         if (/\((main|master|feature|origin|head|dev|staging|auth|bugfix)[^)]*\)/i.test(text)) return true;
@@ -657,15 +670,30 @@ async function onActivate(plugin: ReactRNPlugin) {
         return false;
       }
 
-      function checkIsCode(text: string): boolean {
+      function cleanProseText(text: string): string {
+        let s = text
+          .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
+          .replace(/\n?```$/, '')
+          .trim();
+        // Оформляем команды и пути в инлайн-код `...`
+        s = s.replace(/(?<!`)git branch feature-auth(?!`)/g, '`git branch feature-auth`');
+        s = s.replace(/(?<!`)\.git\/refs\/heads\/(?!`)/g, '`.git/refs/heads/`');
+        s = s.replace(/(?<!`)git branch -v(?!`)/g, '`git branch -v`');
+        return s;
+      }
+
+      function isCodeSnippet(text: string): boolean {
+        if (!text) return false;
         if (text.startsWith('```')) return true;
         const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
-        if (russianWords.length >= 3 && !text.startsWith('#') && !text.startsWith('//')) {
+        if (russianWords.length >= 4) {
           return false;
         }
-        const isGit = /^git\s+(checkout|switch|branch|status|commit|add|push|pull|rebase|merge|reset|log|diff|clone|remote|stash|tag|init)\b/i.test(text);
         return (
-          isGit ||
+          text.startsWith('# Старый') ||
+          text.startsWith('# Новый') ||
+          text.startsWith('#') ||
+          text.startsWith('git ') ||
           text.startsWith('def ') ||
           text.startsWith('class ') ||
           text.startsWith('import ') ||
@@ -678,332 +706,201 @@ async function onActivate(plugin: ReactRNPlugin) {
           text.startsWith('kubectl ') ||
           text.startsWith('python ') ||
           text.startsWith('npm ') ||
-          text.startsWith('curl ') ||
-          text.startsWith('uvicorn ') ||
-          text.startsWith('alembic ') ||
-          isAsciiDiagramLine(text)
+          isAsciiDiagram(text)
         ) && !text.includes('::') && !text.includes('?');
       }
 
-      // Структура для каждого элемента конспекта
-      type ParsedItem = {
+      // Собираем метаданные обо всех узлах
+      type RemEntry = {
         rem: PluginRem;
         text: string;
-        isDivider: boolean;
+        isCode: boolean;
         isCard: boolean;
-        isDeleted: boolean;
+        isHeading: boolean;
+        cleanTitle: string;
+        isDot: boolean;
+        isCodeCandidate: boolean;
+        isProseInCode: boolean;
       };
 
-      const items: ParsedItem[] = [];
+      const entries: RemEntry[] = [];
       for (const rem of allRemList) {
         let text = '';
         try {
           text = (await plugin.richText.toString(rem.text || [])).trim();
         } catch (_) {}
-        const isDivider = await rem.hasPowerup(BuiltInPowerupCodes.Divider);
-        let hasCards = false;
-        try {
-          const cards = await rem.getCards();
-          hasCards = Boolean(cards && cards.length > 0);
-        } catch (_) {}
+        const isCode = (await rem.hasPowerup(BuiltInPowerupCodes.Code)) || (await rem.isCode());
+        const isCard = text.includes('📖 Перечитать') || text.includes('Конспект перечитан');
+        const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
+        const isHeading =
+          !isCard &&
+          (text.startsWith('#') || (await rem.getFontSize()) === 'H2' || (await rem.getFontSize()) === 'H1') &&
+          russianWords.length < 10 &&
+          !isCodeSnippet(text);
+        const cleanTitle = isHeading ? cleanHeadingTitle(text) : '';
+        const isDot = text === '.' || text === '# .' || text === '•';
+        const isProseInCode = (isCode || text.startsWith('```')) && russianWords.length >= 4;
+        const isCodeCandidate = !isHeading && !isCard && !isDot && (isCode || isCodeSnippet(text)) && !isProseInCode;
 
-        const isCard =
-          text.includes('📖 Перечитать') ||
-          text.includes('Конспект перечитан') ||
-          text.includes('::') ||
-          text.includes('->') ||
-          text.includes('→') ||
-          hasCards;
-        items.push({
+        entries.push({
           rem,
           text,
-          isDivider,
+          isCode,
           isCard,
-          isDeleted: false,
+          isHeading,
+          cleanTitle,
+          isDot,
+          isCodeCandidate,
+          isProseInCode,
         });
       }
 
-      // Безопасное удаление с проверкой прав Delete
-      let hasDeletePermission = true;
+      // Формируем плоский план расположения
+      type PlanAction =
+        | { type: 'card'; rem: PluginRem; text: string }
+        | { type: 'spacer' }
+        | { type: 'heading'; rem: PluginRem; title: string }
+        | { type: 'prose'; rem: PluginRem; text: string }
+        | { type: 'code_block'; rem: PluginRem; code: string };
 
-      async function safeDeleteRem(rem: PluginRem) {
-        try {
-          await rem.setText(await plugin.richText.text('').value());
-        } catch (_) {}
+      const plan: PlanAction[] = [];
 
-        if (!hasDeletePermission) {
-          return;
-        }
-
-        try {
-          await rem.remove();
-        } catch (err: any) {
-          hasDeletePermission = false;
-        }
+      // 1. Карточка
+      const cardEntry = entries.find(e => e.isCard);
+      if (cardEntry) {
+        plan.push({ type: 'card', rem: cardEntry.rem, text: cardEntry.text });
+        plan.push({ type: 'spacer' });
+        plan.push({ type: 'spacer' });
+        plan.push({ type: 'spacer' });
       }
 
-      // Предварительная очистка старых разделителей и пустых узлов
-      for (const item of items) {
-        if (item.isDivider) {
-          item.isDeleted = true;
-          await safeDeleteRem(item.rem);
-          continue;
-        }
+      // 2. Обходим остальные элементы
+      let isFirstSection = true;
 
-        if (item.text.length === 0 && !item.isCard) {
-          item.isDeleted = true;
-          await safeDeleteRem(item.rem);
-          continue;
-        }
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        if (entry.isCard) continue;
 
-        if ((item.text === '.' || item.text === '# .' || item.text === '#' || item.text === '•') && !item.isCard) {
-          item.isDeleted = true;
-          await safeDeleteRem(item.rem);
-          continue;
-        }
-      }
-
-      let currentSection: PluginRem | null = null;
-      let currentSubSection: PluginRem | null = null;
-      let sectionsCount = 0;
-      let codeCount = 0;
-      let itemsCount = 0;
-
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.isDeleted) continue;
-
-        const rawText = item.text;
-
-        // 1. Карточка повторения (всегда на самом верху конспекта, позиция 0)
-        if (item.isCard) {
-          try {
-            await item.rem.setParent(target, 0);
-          } catch (_) {}
-          continue;
-        }
-
-        // 2. Проверка на фиктивный заголовок-обертку (## . или ### .)
-        const isDummyHeading = rawText === '## .' || rawText === '### .' || rawText === '##' || rawText === '###';
-        if (isDummyHeading) {
-          let foundTitle = '';
-          for (let j = i + 1; j < items.length && j <= i + 3; j++) {
-            if (!items[j].isDeleted && items[j].text.length > 0) {
-              const candidate = items[j].text.replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '').trim();
-              const firstLine = candidate.split('\n')[0].trim();
-              if (firstLine.length > 0 && firstLine.length < 50 && !firstLine.startsWith('#') && !isAsciiDiagramLine(firstLine)) {
-                foundTitle = firstLine;
-                const remainingLines = candidate.split('\n').slice(1).join('\n').trim();
-                if (remainingLines.length > 0) {
-                  items[j].text = remainingLines;
-                } else {
-                  items[j].isDeleted = true;
-                  await safeDeleteRem(items[j].rem);
-                }
-              }
-              break;
-            }
+        if (entry.isHeading) {
+          if (!isFirstSection) {
+            plan.push({ type: 'spacer' });
+            plan.push({ type: 'spacer' });
           }
-
-          if (foundTitle) {
-            const emoji = getThematicEmoji(foundTitle) || '🔹';
-            const cleanTitle = foundTitle.replace(/^[^\w\sа-яА-ЯёЁ]+\s*/, '').trim();
-            const formattedTitle = `${emoji} ${cleanTitle}`;
-            await item.rem.setText(await plugin.richText.text(formattedTitle).value());
-            await item.rem.setFontSize('H3');
-            await item.rem.setIsCode(false);
-            await item.rem.removePowerup(BuiltInPowerupCodes.Code);
-            await item.rem.setParent(currentSection || target);
-            currentSubSection = item.rem;
-            continue;
-          } else {
-            item.isDeleted = true;
-            await safeDeleteRem(item.rem);
-            continue;
-          }
-        }
-
-        // 3. Распознавание подзаголовка темы (Git Merge, Git Rebase и т.д.)
-        const isKnownSubHeading = /^```[a-zA-Z0-9_-]*\s*\n?(Git Merge|Git Rebase)$/i.test(rawText.trim()) ||
-          rawText.trim() === 'Git Merge' ||
-          rawText.trim() === 'Git Rebase';
-
-        if (isKnownSubHeading) {
-          const title = rawText.replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '').trim();
-          const emoji = getThematicEmoji(title) || '🔹';
-          const cleanTitle = title.replace(/^[^\w\sа-яА-ЯёЁ]+\s*/, '').trim();
-          const formattedH3 = `${emoji} ${cleanTitle}`;
-          await item.rem.setText(await plugin.richText.text(formattedH3).value());
-          await item.rem.setFontSize('H3');
-          await item.rem.setIsCode(false);
-          await item.rem.removePowerup(BuiltInPowerupCodes.Code);
-          await item.rem.setParent(currentSection || target);
-          currentSubSection = item.rem;
+          plan.push({ type: 'heading', rem: entry.rem, title: entry.cleanTitle });
+          isFirstSection = false;
           continue;
         }
 
-        // 4. Основные разделы H2 (начинаются с ## или уже H2/H1)
-        const isH2 = rawText.startsWith('## ') || ((await item.rem.getFontSize()) === 'H2' && !checkIsCode(rawText) && !rawText.startsWith('### '));
-        if (isH2) {
-          currentSubSection = null; // сбрасываем подраздел
-          const cleanTitle = rawText.replace(/^#{2,3}\s*/, '').replace(/^[^\w\sа-яА-ЯёЁ]+\s*/, '').trim();
-          const emoji = getThematicEmoji(cleanTitle) || '📌';
-          const formattedH2 = `## ${emoji} ${cleanTitle}`;
-          await item.rem.setText(await plugin.richText.text(formattedH2).value());
-          await item.rem.setFontSize('H2');
-          await item.rem.setIsCode(false);
-          await item.rem.removePowerup(BuiltInPowerupCodes.Code);
-          await item.rem.setParent(target);
-          currentSection = item.rem;
-          sectionsCount++;
+        if (entry.isProseInCode) {
+          plan.push({ type: 'prose', rem: entry.rem, text: cleanProseText(entry.text) });
           continue;
         }
 
-        // 5. Подразделы H3 (начинаются с ### )
-        const isH3 = rawText.startsWith('### ');
-        if (isH3) {
-          const cleanTitle = rawText.replace(/^#{2,3}\s*/, '').replace(/^[^\w\sа-яА-ЯёЁ]+\s*/, '').trim();
-          const emoji = getThematicEmoji(cleanTitle) || '🔹';
-          const formattedH3 = `${emoji} ${cleanTitle}`;
-          await item.rem.setText(await plugin.richText.text(formattedH3).value());
-          await item.rem.setFontSize('H3');
-          await item.rem.setIsCode(false);
-          await item.rem.removePowerup(BuiltInPowerupCodes.Code);
-          await item.rem.setParent(currentSection || target);
-          currentSubSection = item.rem;
-          continue;
-        }
-
-        // 6. Склейка многострочных блоков кода и ASCII-диаграмм веток
-        const startsWithCodeFence = rawText.startsWith('```');
-        const isAsciiStart = isAsciiDiagramLine(rawText);
-
-        if (startsWithCodeFence || isAsciiStart) {
-          const hasClosingFence = startsWithCodeFence && rawText.slice(3).includes('```');
-
-          if (!hasClosingFence) {
-            const gatheredLines: string[] = [];
-            const initialText = rawText.replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '').trim();
-            if (initialText.length > 0) {
-              gatheredLines.push(initialText);
-            }
-
-            for (let j = i + 1; j < items.length; j++) {
-              if (items[j].isDeleted) continue;
-              const nextText = items[j].text;
-
-              if (nextText.startsWith('## ') || nextText.startsWith('### ')) {
-                break;
-              }
-
-              if (nextText.endsWith('```')) {
-                const content = nextText.replace(/\n?```$/, '').trim();
-                if (content.length > 0) {
-                  gatheredLines.push(content);
-                }
-                items[j].isDeleted = true;
-                await safeDeleteRem(items[j].rem);
-                break;
-              }
-
-              if (nextText.startsWith('```')) {
-                break;
-              }
-
-              if (startsWithCodeFence || isAsciiDiagramLine(nextText) || nextText.startsWith('(')) {
-                gatheredLines.push(nextText);
-                items[j].isDeleted = true;
-                await safeDeleteRem(items[j].rem);
-              } else {
-                break;
-              }
-            }
-
-            if (gatheredLines.length > 0) {
-              const fullCode = gatheredLines.join('\n');
-              await item.rem.setText(await plugin.richText.text(fullCode).value());
-              await item.rem.setIsCode(true);
-              await item.rem.addPowerup(BuiltInPowerupCodes.Code);
-              const desiredParent = currentSubSection || currentSection || target;
-              await item.rem.setParent(desiredParent);
-              codeCount++;
-              continue;
-            }
-          } else {
-            const cleanCode = rawText
-              .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
-              .replace(/\n?```$/, '')
-              .trim();
-            await item.rem.setText(await plugin.richText.text(cleanCode).value());
-            await item.rem.setIsCode(true);
-            await item.rem.addPowerup(BuiltInPowerupCodes.Code);
-            const desiredParent = currentSubSection || currentSection || target;
-            await item.rem.setParent(desiredParent);
-            codeCount++;
-            continue;
-          }
-        }
-
-        // 7. Однострочные команды кода (git, python, docker и т.д.)
-        if (checkIsCode(rawText)) {
-          const cleanCode = rawText
+        if (entry.isCodeCandidate) {
+          const cleanCode = entry.text
             .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
             .replace(/\n?```$/, '')
             .trim();
-          await item.rem.setText(await plugin.richText.text(cleanCode).value());
-          await item.rem.setIsCode(true);
-          await item.rem.addPowerup(BuiltInPowerupCodes.Code);
-          const desiredParent = currentSubSection || currentSection || target;
-          await item.rem.setParent(desiredParent);
-          codeCount++;
+          plan.push({ type: 'code_block', rem: entry.rem, code: cleanCode });
           continue;
         }
 
-        // 8. Обычный пояснительный текст
-        if (rawText.length > 0) {
-          const hasCodePowerup = await item.rem.hasPowerup(BuiltInPowerupCodes.Code);
-          if (hasCodePowerup) {
-            try {
-              await item.rem.setIsCode(false);
-              await item.rem.removePowerup(BuiltInPowerupCodes.Code);
-            } catch (_) {}
-          }
-          const desiredParent = currentSubSection || currentSection || target;
-          await item.rem.setParent(desiredParent);
-          itemsCount++;
+        if (!entry.isDot && entry.text.length > 0) {
+          plan.push({ type: 'prose', rem: entry.rem, text: cleanProseText(entry.text) });
         }
       }
 
-      // 9. Расставляем чистые разделители между разделами H2
-      const topChildren = await target.getChildrenRem();
-      for (let i = 0; i < topChildren.length; i++) {
-        const topChild = topChildren[i];
-        const isH2 = (await topChild.getFontSize()) === 'H2';
-        if (isH2 && i > 0) {
-          const prevChild = topChildren[i - 1];
-          const prevIsDivider = prevChild ? await prevChild.hasPowerup(BuiltInPowerupCodes.Divider) : false;
-          if (!prevIsDivider) {
-            const pos = await topChild.positionAmongstSiblings();
-            const currentPos = typeof pos === 'number' ? pos : 0;
-            const dividerRem = await plugin.rem.createRem();
-            if (dividerRem) {
-              await dividerRem.setText(await plugin.richText.text('').value());
-              await dividerRem.addPowerup(BuiltInPowerupCodes.Divider);
-              await dividerRem.setParent(target, currentPos);
-            }
+      // 3. Пул свободных узлов для спейсеров и оберток "."
+      const usedRemIds = new Set<string>();
+      for (const p of plan) {
+        if ('rem' in p && p.rem) {
+          usedRemIds.add(p.rem._id);
+        }
+      }
+      const remPool = entries.filter(e => !usedRemIds.has(e.rem._id)).map(e => e.rem);
+      let poolIdx = 0;
+
+      async function getSpareRem(): Promise<PluginRem | undefined> {
+        if (poolIdx < remPool.length) {
+          return remPool[poolIdx++];
+        }
+        return await plugin.rem.createRem();
+      }
+
+      // 4. Применяем план
+      let currentPos = 0;
+      let headingsCount = 0;
+      let codeBlocksCount = 0;
+
+      for (const action of plan) {
+        if (action.type === 'card') {
+          await action.rem.setParent(target, currentPos++);
+        } else if (action.type === 'spacer') {
+          const spacer = await getSpareRem();
+          if (spacer) {
+            await spacer.setText(await plugin.richText.text('').value());
+            await spacer.setIsCode(false);
+            try { await spacer.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+            try { await spacer.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+            await spacer.setFontSize('H1'); // сброс размера
+            await spacer.setParent(target, currentPos++);
+          }
+        } else if (action.type === 'heading') {
+          await action.rem.setText(await plugin.richText.text(`## ${action.title}`).value());
+          await action.rem.setFontSize('H2');
+          await action.rem.setIsCode(false);
+          try { await action.rem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+          try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+          await action.rem.setParent(target, currentPos++);
+          headingsCount++;
+        } else if (action.type === 'prose') {
+          await action.rem.setText(await plugin.richText.text(action.text).value());
+          await action.rem.setIsCode(false);
+          try { await action.rem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+          try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+          await action.rem.setParent(target, currentPos++);
+        } else if (action.type === 'code_block') {
+          // Создаем или берем узел-обертку "." на уровне target
+          const wrapper = await getSpareRem();
+          if (wrapper) {
+            await wrapper.setText(await plugin.richText.text('.').value());
+            await wrapper.setIsCode(false);
+            try { await wrapper.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+            try { await wrapper.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+            await wrapper.setParent(target, currentPos++);
+
+            // Сам блок кода размещаем дочерним элементом обертки "."
+            await action.rem.setText(await plugin.richText.text(action.code).value());
+            await action.rem.setIsCode(true);
+            await action.rem.addPowerup(BuiltInPowerupCodes.Code);
+            try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+            await action.rem.setParent(wrapper, 0);
+            codeBlocksCount++;
+          } else {
+            await action.rem.setText(await plugin.richText.text(action.code).value());
+            await action.rem.setIsCode(true);
+            await action.rem.addPowerup(BuiltInPowerupCodes.Code);
+            await action.rem.setParent(target, currentPos++);
+            codeBlocksCount++;
           }
         }
+      }
+
+      // 5. Очищаем оставшиеся узлы из пула (превращаем в пустые спейсеры в конце или скрываем)
+      while (poolIdx < remPool.length) {
+        const leftover = remPool[poolIdx++];
+        try {
+          await leftover.setText(await plugin.richText.text('').value());
+          await leftover.setIsCode(false);
+          try { await leftover.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+          try { await leftover.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+          await leftover.setParent(target, currentPos++);
+        } catch (_) {}
       }
 
       await plugin.app.toast(
-        `✨ Конспект причесан в 1 клик! Разделов: ${sectionsCount}, кода: ${codeCount}, пунктов: ${itemsCount}`
+        `✨ Конспект идеально оформлен! Разделов: ${headingsCount}, блоков кода: ${codeBlocksCount}`
       );
-
-      if (!hasDeletePermission) {
-        await plugin.app.toast(
-          'ℹ️ Для полного удаления пустых буллетов обновите плагин в Settings -> Plugins (кнопка Reload) и подтвердите право Delete.'
-        );
-      }
     } catch (e) {
       console.error('tidyUpNote failed:', e);
       await plugin.app.toast(`Ошибка при оформлении конспекта: ${String(e)}`);
