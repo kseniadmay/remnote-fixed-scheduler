@@ -270,9 +270,11 @@ async function onActivate(plugin: ReactRNPlugin) {
     let renumberedCount = 0;
     await plugin.app.toast('Выравниваю нумерацию конспектов (01, 02, 03...)...');
 
-    async function processNode(rem: PluginRem) {
+    async function processNode(rem: PluginRem, visited = new Set<string>()) {
+      if (!rem || visited.has(rem._id)) return;
+      visited.add(rem._id);
       const textStr = (await plugin.richText.toString(rem.text || [])).trim();
-      const children = await rem.getChildrenRem();
+      const children = (await rem.getChildrenRem()) || [];
 
       // Если это папка конспектов (или юнит с конспектами) — выравниваем нумерацию
       if (textStr.includes('Конспект') || textStr.includes('Теория')) {
@@ -295,7 +297,7 @@ async function onActivate(plugin: ReactRNPlugin) {
         }
       } else {
         for (const child of children) {
-          await processNode(child);
+          await processNode(child, visited);
         }
       }
     }
@@ -393,7 +395,7 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
 
     let formattedCount = 0;
-    const children = await target.getChildrenRem();
+    const children = (await target.getChildrenRem()) || [];
 
     for (const child of children) {
       const rawText = (await plugin.richText.toString(child.text || [])).trim();
@@ -437,7 +439,9 @@ async function onActivate(plugin: ReactRNPlugin) {
     let codeCount = 0;
     let revertedCount = 0;
 
-    async function processRem(rem: PluginRem) {
+    async function processRem(rem: PluginRem, visited = new Set<string>()) {
+      if (!rem || visited.has(rem._id)) return;
+      visited.add(rem._id);
       const text = (await plugin.richText.toString(rem.text || [])).trim();
       if (!text) {
         return;
@@ -498,9 +502,9 @@ async function onActivate(plugin: ReactRNPlugin) {
         }
       }
 
-      const children = await rem.getChildrenRem();
+      const children = (await rem.getChildrenRem()) || [];
       for (const ch of children) {
-        await processRem(ch);
+        await processRem(ch, visited);
       }
     }
 
@@ -523,7 +527,7 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
 
     try {
-      const rawChildren = await target.getChildrenRem();
+      const rawChildren = (await target.getChildrenRem()) || [];
       if (rawChildren.length === 0) {
         await plugin.app.toast('В документе не найдено абзацев для разделения');
         return;
@@ -777,9 +781,11 @@ async function onActivate(plugin: ReactRNPlugin) {
     let unnestedCount = 0;
 
     // Рекурсивный проход для устранения мусорных обёрток и лишней вложенности
-    async function normalizeTree(currentParent: PluginRem) {
-      const children = await currentParent.getChildrenRem();
-      if (!children || children.length === 0) return;
+    async function normalizeTree(currentParent: PluginRem, visited = new Set<string>()) {
+      if (!currentParent || visited.has(currentParent._id)) return;
+      visited.add(currentParent._id);
+      const children = (await currentParent.getChildrenRem()) || [];
+      if (children.length === 0) return;
 
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
@@ -791,7 +797,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 
         if (isDummyWrapper) {
           // Вытаскиваем всех детей мусорного узла на уровень currentParent
-          const grandChildren = await child.getChildrenRem();
+          const grandChildren = (await child.getChildrenRem()) || [];
           for (const gc of grandChildren) {
             await gc.setParent(currentParent);
             unnestedCount++;
@@ -808,7 +814,7 @@ async function onActivate(plugin: ReactRNPlugin) {
         // Все абзацы и подпункты, случайно затянутые внутрь кода, вытаскиваем наружу
         const isCode = (await child.hasPowerup(BuiltInPowerupCodes.Code)) || (await child.isCode()) || rawText.startsWith('```');
         if (isCode) {
-          const codeChildren = await child.getChildrenRem();
+          const codeChildren = (await child.getChildrenRem()) || [];
           if (codeChildren.length > 0) {
             for (const cc of codeChildren) {
               await cc.setParent(currentParent);
@@ -857,8 +863,8 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   // 10. Форматирование одного конспекта
   async function tidyUpSingleNote(plugin: ReactRNPlugin, target: PluginRem): Promise<{ headingsCount: number; codeBlocksCount: number }> {
-    const allRemList = await target.getDescendants();
-    if (!allRemList || allRemList.length === 0) {
+    const allRemList = (await target.getDescendants()) || [];
+    if (allRemList.length === 0) {
       return { headingsCount: 0, codeBlocksCount: 0 };
     }
 
@@ -1131,8 +1137,10 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
 
     try {
-      // Рекурсивный поиск листовых конспектов
-      async function collectNoteDocuments(root: PluginRem): Promise<PluginRem[]> {
+      // Рекурсивный поиск листовых конспектов с защитой от циклов
+      async function collectNoteDocuments(root: PluginRem, visited = new Set<string>()): Promise<PluginRem[]> {
+        if (!root || visited.has(root._id)) return [];
+        visited.add(root._id);
         const children = (await root.getChildrenRem()) || [];
         const childDocs: PluginRem[] = [];
         for (const ch of children) {
@@ -1144,7 +1152,7 @@ async function onActivate(plugin: ReactRNPlugin) {
         if (childDocs.length > 0) {
           const result: PluginRem[] = [];
           for (const doc of childDocs) {
-            const subNotes = await collectNoteDocuments(doc);
+            const subNotes = await collectNoteDocuments(doc, visited);
             result.push(...subNotes);
           }
           return result;
