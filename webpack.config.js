@@ -112,7 +112,7 @@ if (isProd) {
   // for more information, see https://webpack.js.org/configuration/dev-server
   config.devServer = {
     port: 8080,
-    host: '0.0.0.0',
+    host: '::',
     allowedHosts: 'all',
     open: false,
     hot: true,
