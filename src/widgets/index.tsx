@@ -707,11 +707,43 @@ async function onActivate(plugin: ReactRNPlugin) {
       return false;
     }
 
+    function checkIsHeading(rawText: string, cleanTitle: string, fontSize: 'H1' | 'H2' | 'H3' | undefined, isCard: boolean): boolean {
+      if (isCard) return false;
+      if (!cleanTitle || cleanTitle.length < 3) return false;
+      // Настоящие заголовки разделов в конспектах компактны (не длиннее 65 символов)
+      if (cleanTitle.length > 65) return false;
+
+      // Заголовки разделов в русском языке никогда не заканчиваются точкой
+      if (cleanTitle.endsWith('.')) return false;
+
+      // Заголовок не должен содержать несколько предложений (например: "Текст. Еще текст.")
+      if (/[.!?]\s+[А-ЯA-Z]/.test(cleanTitle)) return false;
+
+      // Количество слов в заголовке раздела обычно не более 8
+      const words = cleanTitle.split(/\s+/).filter(w => w.length > 0);
+      if (words.length > 8) return false;
+
+      // Проверяем: начинается ли с # или имел реальный H2
+      const startsWithHash = /^#{1,3}\s+/.test(rawText) || rawText.startsWith('##') || rawText.startsWith('###');
+      if (startsWithHash) {
+        return true;
+      }
+
+      if (fontSize === 'H2') {
+        return true;
+      }
+
+      return false;
+    }
+
     function cleanProseText(text: string): string {
       let s = text
         .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
         .replace(/\n?```$/, '')
         .trim();
+
+      // Срезаем любые ложные решётки заголовков в начале абзаца
+      s = s.replace(/^[#\s]+/, '').trim();
 
       // 1. Оборачиваем асимптотику и математические формулы Big-O в LaTeX: $O(...)$
       s = s.replace(/(?<![\$`\w])O\(([^)]+)\)(?![\$`\w])/g, (_match, inner) => {
@@ -744,6 +776,7 @@ async function onActivate(plugin: ReactRNPlugin) {
       const clean = text
         .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
         .replace(/\n?```$/, '')
+        .replace(/^[#\s]+/, '')
         .trim();
       const lines = clean.split('\n').filter(l => l.trim().length > 0);
       if (lines.length <= 2 && !isAsciiDiagram(clean)) {
@@ -756,6 +789,7 @@ async function onActivate(plugin: ReactRNPlugin) {
       const clean = raw
         .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
         .replace(/\n?```$/, '')
+        .replace(/^[#\s]+/, '')
         .trim();
       const lines = clean.split('\n').map(l => l.trim()).filter(l => l.length > 0);
       return lines.map(line => {
@@ -821,14 +855,9 @@ async function onActivate(plugin: ReactRNPlugin) {
       const isCard = text.includes('📖 Перечитать') || text.includes('Конспект перечитан');
       const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
       const cleanTitle = cleanHeadingTitle(text);
+      const fontSize = await rem.getFontSize();
 
-      const isHeading =
-        !isCard &&
-        cleanTitle.length >= 3 &&
-        (text.startsWith('#') || (await rem.getFontSize()) === 'H2' || (await rem.getFontSize()) === 'H1') &&
-        russianWords.length < 15 &&
-        !isCodeSnippet(text);
-
+      const isHeading = checkIsHeading(text, cleanTitle, fontSize, isCard) && !isCodeSnippet(text);
       const isDot = text === '.' || text === '# .' || text === '•';
       const isProseInCode = (isCode || text.startsWith('```')) && russianWords.length >= 4;
       const isCodeCandidate = !isHeading && !isCard && !isDot && (isCode || isCodeSnippet(text)) && !isProseInCode;
@@ -963,7 +992,8 @@ async function onActivate(plugin: ReactRNPlugin) {
         await action.rem.setIsCode(false);
         try { await action.rem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
         try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-        await action.rem.setFontSize('H1');
+        try { await action.rem.removePowerup(BuiltInPowerupCodes.Header); } catch (_) {}
+        await action.rem.setFontSize(undefined);
         await action.rem.setParent(target, currentPos++);
       } else if (action.type === 'create_card') {
         const cardRem = (await getSpareRem()) || (await plugin.rem.createRem());
@@ -972,7 +1002,8 @@ async function onActivate(plugin: ReactRNPlugin) {
           await cardRem.setIsCode(false);
           try { await cardRem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
           try { await cardRem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-          await cardRem.setFontSize('H1');
+          try { await cardRem.removePowerup(BuiltInPowerupCodes.Header); } catch (_) {}
+          await cardRem.setFontSize(undefined);
           await cardRem.setParent(target, currentPos++);
         }
       } else if (action.type === 'spacer') {
@@ -982,7 +1013,8 @@ async function onActivate(plugin: ReactRNPlugin) {
           await spacer.setIsCode(false);
           try { await spacer.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
           try { await spacer.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-          await spacer.setFontSize('H1');
+          try { await spacer.removePowerup(BuiltInPowerupCodes.Header); } catch (_) {}
+          await spacer.setFontSize(undefined);
           await spacer.setParent(target, currentPos++);
         }
       } else if (action.type === 'heading') {
@@ -998,7 +1030,8 @@ async function onActivate(plugin: ReactRNPlugin) {
         await action.rem.setIsCode(false);
         try { await action.rem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
         try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-        await action.rem.setFontSize('H1');
+        try { await action.rem.removePowerup(BuiltInPowerupCodes.Header); } catch (_) {}
+        await action.rem.setFontSize(undefined);
         await action.rem.setParent(target, currentPos++);
       } else if (action.type === 'code_block') {
         // Нативный блок кода прямо на верхнем уровне, без обёртки точкой
@@ -1006,7 +1039,8 @@ async function onActivate(plugin: ReactRNPlugin) {
         await action.rem.setIsCode(true);
         await action.rem.addPowerup(BuiltInPowerupCodes.Code);
         try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-        await action.rem.setFontSize('H1');
+        try { await action.rem.removePowerup(BuiltInPowerupCodes.Header); } catch (_) {}
+        await action.rem.setFontSize(undefined);
         await action.rem.setParent(target, currentPos++);
         codeBlocksCount++;
       }
@@ -1018,9 +1052,10 @@ async function onActivate(plugin: ReactRNPlugin) {
       try {
         await leftover.setText(await plugin.richText.text('').value());
         await leftover.setIsCode(false);
-        await leftover.setFontSize('H1');
+        await leftover.setFontSize(undefined);
         try { await leftover.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
         try { await leftover.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+        try { await leftover.removePowerup(BuiltInPowerupCodes.Header); } catch (_) {}
         try { await leftover.remove(); } catch (_) {}
       } catch (_) {}
     }
