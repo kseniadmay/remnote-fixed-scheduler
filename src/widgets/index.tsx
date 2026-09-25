@@ -619,7 +619,171 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
   }
 
+  // 10. Единая суперкоманда: "🪄 Причесать конспект" в один клик
+  async function tidyUpNote(plugin: ReactRNPlugin, rootRem?: PluginRem) {
+    const target = rootRem || (await plugin.focus.getFocusedRem());
+    if (!target) {
+      await plugin.app.toast('Откройте конспект и повторите команду');
+      return;
+    }
+
+    try {
+      await plugin.app.toast('🪄 Начинаем причесывать конспект...');
+
+      // 1. Получаем все узлы конспекта на любой глубине (снимок дерева)
+      const allRemList = await target.getDescendants();
+      if (!allRemList || allRemList.length === 0) {
+        await plugin.app.toast('Конспект пуст');
+        return;
+      }
+
+      function checkIsCode(text: string): boolean {
+        if (text.startsWith('```')) return true;
+        const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
+        if (russianWords.length >= 3 && !text.startsWith('#') && !text.startsWith('//')) {
+          return false;
+        }
+        const isGit = /^git\s+(checkout|switch|branch|status|commit|add|push|pull|rebase|merge|reset|log|diff|clone|remote|stash|tag|init)\b/i.test(text);
+        return (
+          isGit ||
+          text.startsWith('def ') ||
+          text.startsWith('class ') ||
+          text.startsWith('import ') ||
+          text.startsWith('from ') ||
+          text.startsWith('async def ') ||
+          text.startsWith('pip install') ||
+          text.startsWith('docker ') ||
+          text.startsWith('docker-compose') ||
+          text.startsWith('$ ') ||
+          text.startsWith('kubectl ') ||
+          text.startsWith('python ') ||
+          text.startsWith('npm ')
+        ) && !text.includes('::') && !text.includes('?');
+      }
+
+      let currentSection: PluginRem | null = null;
+      let sectionsCount = 0;
+      let codeCount = 0;
+      let itemsCount = 0;
+      let dummiesCount = 0;
+
+      for (const rem of allRemList) {
+        let rawText = '';
+        try {
+          rawText = (await plugin.richText.toString(rem.text || [])).trim();
+        } catch (_) {
+          continue;
+        }
+
+        const isDivider = await rem.hasPowerup(BuiltInPowerupCodes.Divider);
+
+        // А. Мусорные узлы-пустышки (например ".", "# .", "#", "•", или пустые без powerup)
+        const isDummy = !isDivider && (rawText === '.' || rawText === '# .' || rawText === '#' || rawText === '•' || rawText.length === 0);
+        if (isDummy) {
+          try {
+            await rem.setText(await plugin.richText.text('').value());
+            await rem.remove();
+          } catch (_) {}
+          dummiesCount++;
+          continue;
+        }
+
+        // Уже существующие разделители пропускаем
+        if (isDivider) {
+          continue;
+        }
+
+        // Б. Заголовки разделов (начинаются с ## или ###, либо уже имеют размер H2/H1)
+        const isHeadingText = rawText.startsWith('## ') || rawText.startsWith('### ');
+        const isHeadingFontSize = (await rem.getFontSize()) === 'H2' || (await rem.getFontSize()) === 'H1';
+
+        if (isHeadingText || (isHeadingFontSize && rawText.length > 0 && !checkIsCode(rawText))) {
+          const cleanTitle = rawText.replace(/^#{2,3}\s*/, '').trim();
+          await rem.setText(await plugin.richText.text(cleanTitle).value());
+          await rem.setFontSize('H2');
+          await rem.setParent(target);
+          currentSection = rem;
+          sectionsCount++;
+          continue;
+        }
+
+        // В. Блоки кода
+        const isCodeCandidate = checkIsCode(rawText);
+        const hasCodePowerup = await rem.hasPowerup(BuiltInPowerupCodes.Code);
+
+        if (isCodeCandidate) {
+          let cleanCode = rawText
+            .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
+            .replace(/\n?```$/, '')
+            .trim();
+
+          await rem.setText(await plugin.richText.text(cleanCode).value());
+          await rem.setIsCode(true);
+          await rem.addPowerup(BuiltInPowerupCodes.Code);
+
+          // Привязываем код прямо к текущему разделу (или к target)
+          const desiredParent = currentSection || target;
+          await rem.setParent(desiredParent);
+          codeCount++;
+          continue;
+        }
+
+        // Г. Обычный пояснительный текст
+        if (rawText.length > 0) {
+          // Если узел ранее ошибочно считался кодом, снимаем powerup
+          if (hasCodePowerup) {
+            try {
+              await rem.setIsCode(false);
+              await rem.removePowerup(BuiltInPowerupCodes.Code);
+            } catch (_) {}
+          }
+
+          // Привязываем к текущему разделу (или к target)
+          const desiredParent = currentSection || target;
+          await rem.setParent(desiredParent);
+          itemsCount++;
+        }
+      }
+
+      // 2. Расставляем разделители между разделами H2 на уровне target
+      const topChildren = await target.getChildrenRem();
+      for (let i = 0; i < topChildren.length; i++) {
+        const topChild = topChildren[i];
+        const isH2 = (await topChild.getFontSize()) === 'H2';
+        if (isH2 && i > 0) {
+          const prevChild = topChildren[i - 1];
+          const prevIsDivider = prevChild ? await prevChild.hasPowerup(BuiltInPowerupCodes.Divider) : false;
+          if (!prevIsDivider) {
+            const pos = await topChild.positionAmongstSiblings();
+            const currentPos = typeof pos === 'number' ? pos : 0;
+            const dividerRem = await plugin.rem.createRem();
+            if (dividerRem) {
+              await dividerRem.setText(await plugin.richText.text('').value());
+              await dividerRem.addPowerup(BuiltInPowerupCodes.Divider);
+              await dividerRem.setParent(target, currentPos);
+            }
+          }
+        }
+      }
+
+      await plugin.app.toast(
+        `✨ Конспект причесан в 1 клик! Разделов: ${sectionsCount}, кода: ${codeCount}, пунктов: ${itemsCount}`
+      );
+    } catch (e) {
+      console.error('tidyUpNote failed:', e);
+      await plugin.app.toast(`Ошибка при оформлении конспекта: ${String(e)}`);
+    }
+  }
+
   // Регистрация команд палитры (Ctrl+K)
+  await plugin.app.registerCommand({
+    id: 'tidy-up-note',
+    name: '🪄 Причесать конспект (выпрямить и оформить всё в 1 клик)',
+    action: async () => {
+      await tidyUpNote(plugin);
+    },
+  });
+
   await plugin.app.registerCommand({
     id: 'format-unit-headers',
     name: '🎨 Оформить заголовки юнитов и добавить эмодзи',
@@ -656,14 +820,23 @@ async function onActivate(plugin: ReactRNPlugin) {
     id: 'format-full-note',
     name: '✨ Полное оформление конспекта (выпрямление лесенки + разделители + код без bullet)',
     action: async () => {
-      await flattenAndCleanNoteHierarchy(plugin);
-      await formatCodeBlocks(plugin);
-      await formatNoteLayout(plugin);
+      await tidyUpNote(plugin);
     },
   });
 
   // Регистрация команд в меню документа (...)
   try {
+    await plugin.app.registerMenuItem({
+      id: 'menu-tidy-up-note',
+      name: '🪄 Причесать конспект (в 1 клик)',
+      location: PluginCommandMenuLocation.DocumentMenu,
+      action: async (args: any) => {
+        const remId = args?.remId;
+        const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
+        if (rem) await tidyUpNote(plugin, rem);
+      },
+    });
+
     await plugin.app.registerMenuItem({
       id: 'menu-format-unit-headers',
       name: '🎨 Оформить заголовки юнитов (эмодзи)',
@@ -693,11 +866,7 @@ async function onActivate(plugin: ReactRNPlugin) {
       action: async (args: any) => {
         const remId = args?.remId;
         const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
-        if (rem) {
-          await flattenAndCleanNoteHierarchy(plugin, rem);
-          await formatCodeBlocks(plugin, rem);
-          await formatNoteLayout(plugin, rem);
-        }
+        if (rem) await tidyUpNote(plugin, rem);
       },
     });
   } catch (_) {}
