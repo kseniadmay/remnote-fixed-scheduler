@@ -723,31 +723,42 @@ async function onActivate(plugin: ReactRNPlugin) {
         });
       }
 
+      // Безопасное удаление с проверкой прав Delete
+      let hasDeletePermission = true;
+
+      async function safeDeleteRem(rem: PluginRem) {
+        try {
+          await rem.setText(await plugin.richText.text('').value());
+        } catch (_) {}
+
+        if (!hasDeletePermission) {
+          return;
+        }
+
+        try {
+          await rem.remove();
+        } catch (err: any) {
+          hasDeletePermission = false;
+        }
+      }
+
       // Предварительная очистка старых разделителей и пустых узлов
       for (const item of items) {
         if (item.isDivider) {
           item.isDeleted = true;
-          try {
-            await item.rem.remove();
-          } catch (_) {}
+          await safeDeleteRem(item.rem);
           continue;
         }
 
         if (item.text.length === 0 && !item.isCard) {
           item.isDeleted = true;
-          try {
-            await item.rem.setText(await plugin.richText.text('').value());
-            await item.rem.remove();
-          } catch (_) {}
+          await safeDeleteRem(item.rem);
           continue;
         }
 
         if ((item.text === '.' || item.text === '# .' || item.text === '#' || item.text === '•') && !item.isCard) {
           item.isDeleted = true;
-          try {
-            await item.rem.setText(await plugin.richText.text('').value());
-            await item.rem.remove();
-          } catch (_) {}
+          await safeDeleteRem(item.rem);
           continue;
         }
       }
@@ -787,10 +798,7 @@ async function onActivate(plugin: ReactRNPlugin) {
                   items[j].text = remainingLines;
                 } else {
                   items[j].isDeleted = true;
-                  try {
-                    await items[j].rem.setText(await plugin.richText.text('').value());
-                    await items[j].rem.remove();
-                  } catch (_) {}
+                  await safeDeleteRem(items[j].rem);
                 }
               }
               break;
@@ -810,10 +818,7 @@ async function onActivate(plugin: ReactRNPlugin) {
             continue;
           } else {
             item.isDeleted = true;
-            try {
-              await item.rem.setText(await plugin.richText.text('').value());
-              await item.rem.remove();
-            } catch (_) {}
+            await safeDeleteRem(item.rem);
             continue;
           }
         }
@@ -897,10 +902,7 @@ async function onActivate(plugin: ReactRNPlugin) {
                   gatheredLines.push(content);
                 }
                 items[j].isDeleted = true;
-                try {
-                  await items[j].rem.setText(await plugin.richText.text('').value());
-                  await items[j].rem.remove();
-                } catch (_) {}
+                await safeDeleteRem(items[j].rem);
                 break;
               }
 
@@ -911,10 +913,7 @@ async function onActivate(plugin: ReactRNPlugin) {
               if (startsWithCodeFence || isAsciiDiagramLine(nextText) || nextText.startsWith('(')) {
                 gatheredLines.push(nextText);
                 items[j].isDeleted = true;
-                try {
-                  await items[j].rem.setText(await plugin.richText.text('').value());
-                  await items[j].rem.remove();
-                } catch (_) {}
+                await safeDeleteRem(items[j].rem);
               } else {
                 break;
               }
@@ -999,6 +998,12 @@ async function onActivate(plugin: ReactRNPlugin) {
       await plugin.app.toast(
         `✨ Конспект причесан в 1 клик! Разделов: ${sectionsCount}, кода: ${codeCount}, пунктов: ${itemsCount}`
       );
+
+      if (!hasDeletePermission) {
+        await plugin.app.toast(
+          'ℹ️ Для полного удаления пустых буллетов обновите плагин в Settings -> Plugins (кнопка Reload) и подтвердите право Delete.'
+        );
+      }
     } catch (e) {
       console.error('tidyUpNote failed:', e);
       await plugin.app.toast(`Ошибка при оформлении конспекта: ${String(e)}`);
