@@ -83,7 +83,7 @@ function cleanProseText(text) {
   }
 
   // 2. Оборачиваем CLI команды Git
-  s = s.replace(/(?<![\w])(git\s+(?:checkout|switch|merge|rebase|branch|commit|status|push|pull|add|reset|log|diff|clone|remote|stash|tag|init)(?:\s+-[a-zA-Z0-9_-]+|\s+--[a-zA-Z0-9_-]+|\s+<[^>]+>|\s+[a-zA-Z0-9_./-]+)*)(?![\w])/g, wrapAndPreserve);
+  s = s.replace(/(?<![\w])(git\s+(?:checkout|switch|merge|rebase|branch|commit|status|push|pull|add|reset|log|diff|clone|remote|stash|tag|init)(?:\s+-[a-zA-Z0-9_-]+|\s+--[a-zA-Z0-9_-]+|\s+<[^>]+>|\s+[a-zA-Z0-9_./~^@{}-]+)*)(?![\w])/g, wrapAndPreserve);
 
   // 3. Отдельные флаги CLI
   s = s.replace(/(?<![\w])(--(?:abort|continue|skip|hard|soft|mixed|oneline|graph|amend|no-ff|squash|all))(?![\w])/g, wrapAndPreserve);
@@ -309,6 +309,46 @@ assert(cleanProseText('Факториал за O(n!).') === 'Факториал 
 assert(cleanProseText('Команда git switch -c feature-test.') === 'Команда `git switch -c feature-test`.', 'Команда git switch -c');
 assert(cleanProseText('Слияние через git merge --no-ff dev.') === 'Слияние через `git merge --no-ff dev`.', 'Команда git merge --no-ff');
 assert(cleanProseText('Продолжение git rebase --continue.') === 'Продолжение `git rebase --continue`.', 'Команда git rebase --continue');
+
+console.log('\n--- 8. ТЕСТИРОВАНИЕ МНОГОКРАТНОЙ ИДЕМПОТЕНТНОСТИ (10 ЦИКЛОВ) ---');
+const complexDoc = [
+  '📖 Перечитать конспект Ветки в Git: checkout, switch и управление ветками→Конспект перечитан и усвоен. Оцените, насколько хорошо помните материал.',
+  '## Что такое ветка на уровне Git',
+  'Ветка в Git – это не папка. Это указатель за O(1) на коммит.',
+  'git checkout -b feature-auth   # создать и переключиться',
+  'def get_branch():\n    return "main"',
+  '## Fast-forward слияние',
+  'При слиянии git merge --no-ff dev создается коммит.',
+  'Файл .git/HEAD указывает на refs/heads/main.'
+];
+
+let currentPass = complexDoc;
+for (let c = 1; c <= 10; c++) {
+  const nextPass = simulatePass(currentPass);
+  if (c >= 2) {
+    assert(JSON.stringify(currentPass) === JSON.stringify(nextPass), `Идемпотентность цикла ${c - 1} -> ${c}`);
+  }
+  currentPass = nextPass;
+}
+
+console.log('\n--- 9. ТЕСТИРОВАНИЕ КРАЕВЫХ ЗАГОЛОВКОВ ---');
+assert(checkIsHeading('## Что такое merge?', cleanHeadingTitle('## Что такое merge?'), undefined, false) === true, 'Вопросительный заголовок ## Что такое merge?');
+assert(checkIsHeading('## Зачем нужен rebase: основные причины', cleanHeadingTitle('## Зачем нужен rebase: основные причины'), undefined, false) === true, 'Заголовок с двоеточием');
+assert(checkIsHeading('## 1. Заголовок раздела', cleanHeadingTitle('## 1. Заголовок раздела'), undefined, false) === true, 'Нумерованный заголовок раздела');
+assert(checkIsHeading('## Как устроен коммит в деталях', cleanHeadingTitle('## Как устроен коммит в деталях'), undefined, false) === true, 'Русский заголовок');
+assert(checkIsHeading('## Очень длинный заголовок который намеренно превышает допустимый лимит в шестьдесят пять символов подряд', cleanHeadingTitle('## Очень длинный заголовок который намеренно превышает допустимый лимит в шестьдесят пять символов подряд'), undefined, false) === false, 'Длинная строка > 65 символов отсекается');
+assert(checkIsHeading('## Первое предложение. Второе предложение.', cleanHeadingTitle('## Первое предложение. Второе предложение.'), undefined, false) === false, 'Два предложения с точкой отсекаются');
+assert(checkIsHeading('## Первый вопрос? Второе предложение.', cleanHeadingTitle('## Первый вопрос? Второе предложение.'), undefined, false) === false, 'Вопрос с продолжением отсекается');
+assert(checkIsHeading('## Заголовок с точкой на конце.', cleanHeadingTitle('## Заголовок с точкой на конце.'), undefined, false) === false, 'Заголовок с точкой на конце отсекается');
+assert(checkIsHeading('## ', cleanHeadingTitle('## '), undefined, false) === false, 'Пустая решётка отсекается');
+
+console.log('\n--- 10. ТЕСТИРОВАНИЕ КРАЕВЫХ СЛУЧАЕВ СЛОВАРЯ BIG-O И КОМАНД ---');
+assert(cleanProseText('Асимптотика O(k) и O(m + n).') === 'Асимптотика $O(k)$ и $O(m + n)$.', 'Сложность O(k) и O(m + n)');
+assert(cleanProseText('Команда git stash pop.') === 'Команда `git stash pop`.', 'Команда git stash pop');
+assert(cleanProseText('Команда git commit --amend.') === 'Команда `git commit --amend`.', 'Команда git commit --amend');
+assert(cleanProseText('Команда git reset --hard HEAD~1.') === 'Команда `git reset --hard HEAD~1`.', 'Команда git reset --hard');
+assert(cleanProseText('История git log --oneline --graph.') === 'История `git log --oneline --graph`.', 'Команда git log --oneline --graph');
+assert(cleanProseText('Разница git diff HEAD.') === 'Разница `git diff HEAD`.', 'Команда git diff HEAD');
 
 console.log(`\n==========================================`);
 console.log(`ИТОГО: Успешно: ${totalPassed} | Ошибок: ${totalFailed}`);
