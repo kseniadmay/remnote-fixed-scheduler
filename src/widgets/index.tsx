@@ -607,13 +607,12 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   function cleanHeadingTitle(raw: string): string {
     let s = raw.trim();
-    s = s.replace(/^[#\s]+/, '');
-    while (s.startsWith('##') || s.startsWith('#')) {
-      s = s.replace(/^[#\s]+/, '');
-    }
-    // Удаляем любые эмодзи в начале заголовка (строгий академический стиль)
+    // Срезаем начальные решетки Markdown (#, ##, ### и т.д.)
+    s = s.replace(/^#{1,6}\s*/, '');
+    // Удаляем эмодзи в начале заголовка
     s = s.replace(/^[\p{Emoji}\u200d\ufe0f\s]+/u, '');
-    s = s.replace(/^[^\w\sа-яА-ЯёЁa-zA-Z0-9]+\s*/, '');
+    // Удаляем маркеры списков и точки в начале
+    s = s.replace(/^[-*•–—.]+\s*/, '');
     return s.trim();
   }
 
@@ -628,9 +627,9 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   function checkIsHeading(rawText: string, cleanTitle: string, fontSize: 'H1' | 'H2' | 'H3' | undefined, isCard: boolean): boolean {
     if (isCard) return false;
-    if (!cleanTitle || cleanTitle.length < 3) return false;
-    // Настоящие заголовки разделов в конспектах компактны (не длиннее 65 символов)
-    if (cleanTitle.length > 65) return false;
+    if (!cleanTitle || cleanTitle.length < 2) return false;
+    // Настоящие заголовки разделов в конспектах не длиннее 70 символов
+    if (cleanTitle.length > 70) return false;
 
     // Заголовки разделов в русском языке никогда не заканчиваются точкой
     if (cleanTitle.endsWith('.')) return false;
@@ -638,17 +637,17 @@ async function onActivate(plugin: ReactRNPlugin) {
     // Заголовок не должен содержать несколько предложений (например: "Текст. Еще текст.")
     if (/[.!?]\s+[А-ЯA-Z]/.test(cleanTitle)) return false;
 
-    // Количество слов в заголовке раздела обычно не более 8
+    // Количество слов в заголовке раздела обычно не более 10
     const words = cleanTitle.split(/\s+/).filter(w => w.length > 0);
-    if (words.length > 8) return false;
+    if (words.length > 10) return false;
 
-    // Проверяем: начинается ли с # или имел реальный H2
-    const startsWithHash = /^#{1,3}\s+/.test(rawText) || rawText.startsWith('##') || rawText.startsWith('###');
+    // Проверяем: начинается ли с # или имел реальный H1, H2, H3
+    const startsWithHash = /^#{1,6}\s+/.test(rawText) || rawText.startsWith('##') || rawText.startsWith('###') || rawText.startsWith('#');
     if (startsWithHash) {
       return true;
     }
 
-    if (fontSize === 'H2') {
+    if (fontSize === 'H1' || fontSize === 'H2' || fontSize === 'H3') {
       return true;
     }
 
@@ -862,6 +861,10 @@ async function onActivate(plugin: ReactRNPlugin) {
   function isCodeSnippet(text: string): boolean {
     if (!text) return false;
     if (text.startsWith('```')) return true;
+    // Заголовки Markdown (##, ### или # с пробелом) НИКОГДА не являются сниппетами кода!
+    if (/^#{1,6}\s+/.test(text) || text.startsWith('##') || text.startsWith('###')) {
+      return false;
+    }
     const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
     if (russianWords.length >= 4) {
       return false;
@@ -869,7 +872,7 @@ async function onActivate(plugin: ReactRNPlugin) {
     return (
       text.startsWith('# Старый') ||
       text.startsWith('# Новый') ||
-      text.startsWith('#') ||
+      (text.startsWith('# ') && !/^[#\s]*[А-ЯA-Z]/.test(text)) ||
       text.startsWith('git ') ||
       text.startsWith('def ') ||
       text.startsWith('class ') ||

@@ -13,26 +13,23 @@ function calculateNextDays(repsSoFar) {
 
 function cleanHeadingTitle(raw) {
   let s = raw.trim();
-  s = s.replace(/^[#\s]+/, '');
-  while (s.startsWith('##') || s.startsWith('#')) {
-    s = s.replace(/^[#\s]+/, '');
-  }
+  s = s.replace(/^#{1,6}\s*/, '');
   s = s.replace(/^[\p{Emoji}\u200d\ufe0f\s]+/u, '');
-  s = s.replace(/^[^\w\sа-яА-ЯёЁa-zA-Z0-9]+\s*/, '');
+  s = s.replace(/^[-*•–—.]+\s*/, '');
   return s.trim();
 }
 
 function checkIsHeading(rawText, cleanTitle, fontSize, isCard) {
   if (isCard) return false;
-  if (!cleanTitle || cleanTitle.length < 3) return false;
-  if (cleanTitle.length > 65) return false;
+  if (!cleanTitle || cleanTitle.length < 2) return false;
+  if (cleanTitle.length > 70) return false;
   if (cleanTitle.endsWith('.')) return false;
   if (/[.!?]\s+[А-ЯA-Z]/.test(cleanTitle)) return false;
   const words = cleanTitle.split(/\s+/).filter(w => w.length > 0);
-  if (words.length > 8) return false;
-  const startsWithHash = /^#{1,3}\s+/.test(rawText) || rawText.startsWith('##') || rawText.startsWith('###');
+  if (words.length > 10) return false;
+  const startsWithHash = /^#{1,6}\s+/.test(rawText) || rawText.startsWith('##') || rawText.startsWith('###') || rawText.startsWith('#');
   if (startsWithHash) return true;
-  if (fontSize === 'H2') return true;
+  if (fontSize === 'H1' || fontSize === 'H2' || fontSize === 'H3') return true;
   return false;
 }
 
@@ -232,6 +229,9 @@ function formatShortCommandAsProse(raw) {
 function isCodeSnippet(text) {
   if (!text) return false;
   if (text.startsWith('```')) return true;
+  if (/^#{1,6}\s+/.test(text) || text.startsWith('##') || text.startsWith('###')) {
+    return false;
+  }
   const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
   if (russianWords.length >= 4) {
     return false;
@@ -239,7 +239,7 @@ function isCodeSnippet(text) {
   return (
     text.startsWith('# Старый') ||
     text.startsWith('# Новый') ||
-    text.startsWith('#') ||
+    (text.startsWith('# ') && !/^[#\s]*[А-ЯA-Z]/.test(text)) ||
     text.startsWith('git ') ||
     text.startsWith('def ') ||
     text.startsWith('class ') ||
@@ -507,6 +507,29 @@ assert(nativeRichText.some(t => t.i === 'x' && t.text === 'O(1)'), 'Пайпла
 assert(nativeRichText.some(t => t.q === true && t.text === 'git checkout -b dev'), 'Пайплайн создал нативный inline-code токен');
 assert(nativeRichText.some(t => t.q === true && t.text === '.git/HEAD'), 'Пайплайн распознал системный путь .git/HEAD');
 assert(nativeRichText.some(t => t.q === true && t.text === '__init__'), 'Пайплайн распознал dunder метод __init__');
+
+console.log('\n--- 15. ТЕСТИРОВАНИЕ ЗАЩИТЫ ЗАГОЛОВКОВ ОТ ПРЕВРАЩЕНИЯ В ИНЛАЙН-КОД ---');
+assert(isCodeSnippet('## Fast-forward merge') === false, 'Заголовок ## Fast-forward merge НЕ считается кодом');
+assert(isCodeSnippet('## Резюме') === false, 'Заголовок ## Резюме НЕ считается кодом');
+assert(isCodeSnippet('## Что такое ветка на уровне Git') === false, 'Заголовок ## Что такое ветка НЕ считается кодом');
+assert(isCodeSnippet('## Команды Git: checkout, switch') === false, 'Заголовок с двоеточием НЕ считается кодом');
+assert(isCodeSnippet('### Подраздел') === false, 'Заголовок ### Подраздел НЕ считается кодом');
+
+assert(checkIsHeading('## Fast-forward merge', cleanHeadingTitle('## Fast-forward merge'), undefined, false) === true, '## Fast-forward merge признан заголовком');
+assert(checkIsHeading('Fast-forward merge', cleanHeadingTitle('Fast-forward merge'), 'H2', false) === true, 'H2 без решеток признан заголовком');
+assert(checkIsHeading('Быстрый старт', cleanHeadingTitle('Быстрый старт'), 'H1', false) === true, 'H1 признан заголовком');
+assert(checkIsHeading('Важные детали', cleanHeadingTitle('Важные детали'), 'H3', false) === true, 'H3 признан заголовком');
+
+// Симуляция форматирования конспекта с заголовками
+const noteWithHeadings = [
+  '## Fast-forward merge',
+  'При слиянии без конфликтов указатель просто передвигается вперед.',
+  '## Резюме',
+  'Ветка в Git — это легковесный указатель.'
+];
+const formattedPass = simulatePass(noteWithHeadings);
+assert(formattedPass[0] === '## Fast-forward merge', 'Заголовок 1 остался H2 заголовком, а не инлайном');
+assert(formattedPass[2] === '## Резюме', 'Заголовок 2 остался H2 заголовком, а не инлайном');
 
 console.log(`\n==========================================`);
 console.log(`ИТОГО: Успешно: ${totalPassed} | Ошибок: ${totalFailed}`);
