@@ -80,6 +80,58 @@ async function pauseNoteRepetition(plugin: ReactRNPlugin, rem: PluginRem) {
 // ============================================================
 
 async function onActivate(plugin: ReactRNPlugin) {
+  // 0. Регистрация CSS-стилей для скрытия буллетов у блоков кода
+  try {
+    await plugin.app.registerCSS(
+      'clean-code-blocks-no-bullet',
+      `
+      /* Полное скрытие буллетов и стрелок сворачивания для блоков кода */
+      .rem-container:has(.rn-code-node) > .TreeNode > .rem-bullet__container,
+      .rem-container:has(.rn-code-node) > .rem-bullet__container,
+      .rem-container:has(.rn-code-node) .rem-bullet,
+      .rem-container:has(.rn-code-node) .rem-bullet__container,
+      .rem-container:has(.rn-code-node) .toggle-collapse-button,
+      .rem-container:has(.rn-code-node) .collapsedButton,
+      .rem-container:has(.rn-fast-rem-code-node-editor-container) .rem-bullet,
+      .rem-container:has(.rn-fast-rem-code-node-editor-container) .rem-bullet__container,
+      .rem-container:has(.rn-fast-rem-code-node-editor-container) .toggle-collapse-button,
+      .rn-editor__rem:has(.rn-code-node) .rem-bullet,
+      .rn-editor__rem:has(.rn-code-node) .rem-bullet__container,
+      .rn-editor__rem:has(.rn-code-node) .toggle-collapse-button,
+      div:has(> .rn-code-node) .rem-bullet,
+      div:has(> .rn-code-node) .toggle-collapse-button,
+      div:has(> * > .rn-code-node) .rem-bullet,
+      div:has(> * > .rn-code-node) .toggle-collapse-button,
+      [data-rem-tags*="cd"] .rem-bullet,
+      [data-rem-tags*="cd"] .toggle-collapse-button,
+      [data-rem-container-tags*="cd"] .rem-bullet,
+      [data-rem-container-tags*="cd"] .toggle-collapse-button {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        pointer-events: none !important;
+      }
+
+      /* Выравнивание блока кода без буллета */
+      .rem-container:has(.rn-code-node) {
+        margin-left: 0 !important;
+      }
+      .rem-container:has(.rn-code-node) .rn-code-node {
+        margin-top: 6px !important;
+        margin-bottom: 6px !important;
+        border-radius: 8px !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+      }
+      `
+    );
+  } catch (e) {
+    console.warn('[Fixed Scheduler] registerCSS failed:', e);
+  }
+
   // 1. Регистрация алгоритма повторения
   try {
     await registerFixedScheduler(plugin);
@@ -316,12 +368,37 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
 
     let codeCount = 0;
+    let revertedCount = 0;
 
     async function processRem(rem: PluginRem) {
       const text = (await plugin.richText.toString(rem.text || [])).trim();
+      if (!text) {
+        return;
+      }
 
+      // Подсчёт русских слов длиной >= 3 символа
+      const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
+      const hasCyrillicProse = russianWords.length >= 3 && !text.startsWith('#') && !text.startsWith('//');
+
+      // 1. Если Rem был ошибочно помечен кодом, но на самом деле это русский текст/пояснение:
+      const isAlreadyCode = (await rem.hasPowerup(BuiltInPowerupCodes.Code)) || (await rem.isCode());
+      if (isAlreadyCode && hasCyrillicProse && !text.includes('\n')) {
+        try {
+          await rem.setIsCode(false);
+          await rem.removePowerup(BuiltInPowerupCodes.Code);
+          revertedCount++;
+        } catch (_) {}
+      }
+
+      // 2. Проверка, является ли текст кодом:
       const hasCodeMarker = text.startsWith('```');
+
+      // Строка git-команды: только если это реальная команда CLI, а не русское предложение
+      const isGitCommand = /^git\s+(checkout|switch|branch|status|commit|add|push|pull|rebase|merge|reset|log|diff|clone|remote|stash|tag|init)\b/i.test(text);
+
       const isCodeLine = (
+        hasCodeMarker ||
+        isGitCommand ||
         text.startsWith('def ') ||
         text.startsWith('class ') ||
         text.startsWith('import ') ||
@@ -331,12 +408,13 @@ async function onActivate(plugin: ReactRNPlugin) {
         text.startsWith('docker run') ||
         text.startsWith('docker build') ||
         text.startsWith('docker-compose') ||
-        text.startsWith('git ') ||
+        text.startsWith('docker ') ||
         text.startsWith('$ ') ||
-        text.includes('print(') ||
-        text.includes('return ') ||
+        text.startsWith('kubectl ') ||
+        text.startsWith('python ') ||
+        text.startsWith('npm ') ||
         text.includes('if __name__ ==')
-      ) && !text.includes('::') && !text.includes('?');
+      ) && !hasCyrillicProse && !text.includes('::') && !text.includes('?');
 
       if (hasCodeMarker || isCodeLine) {
         const isCodePowerup = await rem.hasPowerup(BuiltInPowerupCodes.Code);
@@ -347,6 +425,7 @@ async function onActivate(plugin: ReactRNPlugin) {
             .trim();
 
           await rem.setText(await plugin.richText.text(cleanCode).value());
+          await rem.setIsCode(true);
           await rem.addPowerup(BuiltInPowerupCodes.Code);
           codeCount++;
         }
@@ -360,7 +439,8 @@ async function onActivate(plugin: ReactRNPlugin) {
 
     try {
       await processRem(target);
-      await plugin.app.toast(`💻 Готово! Оформлено блоков кода (убран bullet): ${codeCount}`);
+      const msg = `💻 Готово! Оформлено блоков кода: ${codeCount}` + (revertedCount > 0 ? `, возвращено в текст: ${revertedCount}` : '');
+      await plugin.app.toast(msg);
     } catch (e) {
       console.error('formatCodeBlocks failed:', e);
       await plugin.app.toast(`Ошибка при форматировании кода: ${String(e)}`);
@@ -376,12 +456,16 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
 
     try {
-      const children = await target.getChildrenRem();
+      const rawChildren = await target.getChildrenRem();
       const contentChildren: PluginRem[] = [];
-      for (const ch of children) {
+
+      // 1. Очищаем старые разделители и пустые строки во избежание дубликатов
+      for (const ch of rawChildren) {
         const isDivider = await ch.hasPowerup(BuiltInPowerupCodes.Divider);
         const text = (await plugin.richText.toString(ch.text || [])).trim();
-        if (!isDivider && text.length > 0) {
+        if (isDivider || text.length === 0) {
+          await ch.remove();
+        } else {
           contentChildren.push(ch);
         }
       }
@@ -391,9 +475,10 @@ async function onActivate(plugin: ReactRNPlugin) {
         return;
       }
 
+      // 2. Вставляем перед каждым абзацем (начиная с первого):
+      //    пустая строка -> разделитель -> пустая строка
       let addedDividers = 0;
-      for (let i = 0; i < contentChildren.length; i++) {
-        const child = contentChildren[i];
+      for (const child of contentChildren) {
         const pos = await child.positionAmongstSiblings();
         const currentPos = typeof pos === 'number' ? pos : 0;
 
