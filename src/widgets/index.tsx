@@ -681,12 +681,18 @@ async function onActivate(plugin: ReactRNPlugin) {
       return { headingsCount: 0, codeBlocksCount: 0 };
     }
 
+    const docTitle = (await plugin.richText.toString(target.text || [])).trim();
+    const expectedCardFront = `📖 Перечитать конспект ${docTitle}`;
+    const expectedCardBack = `Конспект перечитан и усвоен. Оцените, насколько хорошо помните материал.`;
+    const expectedCardFullText = `${expectedCardFront}→${expectedCardBack}`;
+
     function cleanHeadingTitle(raw: string): string {
       let s = raw.trim();
       s = s.replace(/^[#\s]+/, '');
       while (s.startsWith('##') || s.startsWith('#')) {
         s = s.replace(/^[#\s]+/, '');
       }
+      // Удаляем любые эмодзи в начале заголовка (строгий академический стиль)
       s = s.replace(/^[\p{Emoji}\u200d\ufe0f\s]+/u, '');
       s = s.replace(/^[^\w\sа-яА-ЯёЁa-zA-Z0-9]+\s*/, '');
       return s.trim();
@@ -706,10 +712,63 @@ async function onActivate(plugin: ReactRNPlugin) {
         .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
         .replace(/\n?```$/, '')
         .trim();
-      s = s.replace(/(?<!`)git branch feature-auth(?!`)/g, '`git branch feature-auth`');
-      s = s.replace(/(?<!`)\.git\/refs\/heads\/(?!`)/g, '`.git/refs/heads/`');
-      s = s.replace(/(?<!`)git branch -v(?!`)/g, '`git branch -v`');
-      return s;
+
+      // 1. Оборачиваем асимптотику и математические формулы Big-O в LaTeX: $O(...)$
+      s = s.replace(/(?<![\$`\w])O\(([^)]+)\)(?![\$`\w])/g, (_match, inner) => {
+        let formula = inner.trim();
+        formula = formula.replace(/\blog\b/g, '\\log');
+        formula = formula.replace(/\s*\+\s*/g, ' + ');
+        return `$O(${formula})$`;
+      });
+
+      // 2. Оборачиваем CLI команды Git
+      s = s.replace(/(?<![`\w])(git\s+(?:checkout|switch|merge|rebase|branch|commit|status|push|pull|add|reset|log|diff|clone|remote|stash|tag|init)(?:\s+-[a-zA-Z0-9_-]+|\s+--[a-zA-Z0-9_-]+|\s+<[^>]+>|\s+[a-zA-Z0-9_./-]+)*)(?![`\w])/g, '`$1`');
+
+      // 3. Отдельные флаги CLI: --abort, --continue, --skip, --hard, --soft, --mixed, --oneline, --graph, -b, -m, -d, -D
+      s = s.replace(/(?<![`\w])(--(?:abort|continue|skip|hard|soft|mixed|oneline|graph|amend|no-ff|squash|all))(?![`\w])/g, '`$1`');
+
+      // 4. Системные пути и refs: .git/HEAD, .git/refs/heads/, refs/heads/, .gitignore
+      s = s.replace(/(?<![`\w])(\.git(?:\/[a-zA-Z0-9_.-]+)*)(?![`\w])/g, '`$1`');
+      s = s.replace(/(?<![`\w])(refs\/heads(?:\/[a-zA-Z0-9_.-]+)*)(?![`\w])/g, '`$1`');
+
+      // 5. Типографика тире: дефисы между словами заменяем на длинное тире
+      s = s.replace(/\s+[-–]\s+/g, ' — ');
+
+      // 6. Устраняем случайные дубликаты обратных кавычек
+      s = s.replace(/`{2,}/g, '`');
+
+      return s.trim();
+    }
+
+    function isShortCommandSnippet(text: string): boolean {
+      const clean = text
+        .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
+        .replace(/\n?```$/, '')
+        .trim();
+      const lines = clean.split('\n').filter(l => l.trim().length > 0);
+      if (lines.length <= 2 && !isAsciiDiagram(clean)) {
+        return true;
+      }
+      return false;
+    }
+
+    function formatShortCommandAsProse(raw: string): string {
+      const clean = raw
+        .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
+        .replace(/\n?```$/, '')
+        .trim();
+      const lines = clean.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      return lines.map(line => {
+        let l = line.replace(/^\$\s*/, '');
+        const hashIdx = l.indexOf('#');
+        if (hashIdx > 0) {
+          const cmd = l.slice(0, hashIdx).trim();
+          const comment = l.slice(hashIdx + 1).trim();
+          return `\`${cmd}\` — ${comment}`;
+        } else {
+          return `\`${l}\``;
+        }
+      }).join('\n');
     }
 
     function isCodeSnippet(text: string): boolean {
@@ -789,6 +848,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 
     type PlanAction =
       | { type: 'card'; rem: PluginRem; text: string }
+      | { type: 'create_card'; text: string }
       | { type: 'spacer' }
       | { type: 'heading'; rem: PluginRem; title: string }
       | { type: 'prose'; rem: PluginRem; text: string }
@@ -796,16 +856,19 @@ async function onActivate(plugin: ReactRNPlugin) {
 
     const plan: PlanAction[] = [];
 
-    // 1. Карточка
+    // 1. Карточка в начале конспекта
     const cardEntry = entries.find(e => e.isCard);
     if (cardEntry) {
-      plan.push({ type: 'card', rem: cardEntry.rem, text: cardEntry.text });
-      plan.push({ type: 'spacer' });
-      plan.push({ type: 'spacer' });
-      plan.push({ type: 'spacer' });
+      plan.push({ type: 'card', rem: cardEntry.rem, text: expectedCardFullText });
+    } else {
+      plan.push({ type: 'create_card', text: expectedCardFullText });
     }
+    // Ровно 3 пустые строки после карточки
+    plan.push({ type: 'spacer' });
+    plan.push({ type: 'spacer' });
+    plan.push({ type: 'spacer' });
 
-    // 2. Дедупликация и план секций
+    // 2. Обходим остальные элементы с дедупликацией
     let isFirstSection = true;
     const seenHeadings = new Set<string>();
     const seenProse = new Set<string>();
@@ -821,6 +884,7 @@ async function onActivate(plugin: ReactRNPlugin) {
         }
         seenHeadings.add(entry.cleanTitle);
 
+        // Перед каждым разделом (начиная со второго) ровно 2 пустые строки
         if (!isFirstSection) {
           plan.push({ type: 'spacer' });
           plan.push({ type: 'spacer' });
@@ -844,9 +908,20 @@ async function onActivate(plugin: ReactRNPlugin) {
           .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
           .replace(/\n?```$/, '')
           .trim();
-        if (cleanCode.length > 0 && !seenCode.has(cleanCode)) {
-          seenCode.add(cleanCode);
-          plan.push({ type: 'code_block', rem: entry.rem, code: cleanCode });
+
+        if (isShortCommandSnippet(cleanCode)) {
+          // Короткие команды (1-2 строки) -> инлайн-код в обычном тексте
+          const prose = formatShortCommandAsProse(cleanCode);
+          if (prose.length > 0 && !seenProse.has(prose)) {
+            seenProse.add(prose);
+            plan.push({ type: 'prose', rem: entry.rem, text: prose });
+          }
+        } else {
+          // Многострочный код или ASCII-диаграмма -> полноценный блок кода
+          if (cleanCode.length > 0 && !seenCode.has(cleanCode)) {
+            seenCode.add(cleanCode);
+            plan.push({ type: 'code_block', rem: entry.rem, code: cleanCode });
+          }
         }
         continue;
       }
@@ -884,7 +959,22 @@ async function onActivate(plugin: ReactRNPlugin) {
 
     for (const action of plan) {
       if (action.type === 'card') {
+        await action.rem.setText(await plugin.richText.text(action.text).value());
+        await action.rem.setIsCode(false);
+        try { await action.rem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+        try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+        await action.rem.setFontSize('H1');
         await action.rem.setParent(target, currentPos++);
+      } else if (action.type === 'create_card') {
+        const cardRem = (await getSpareRem()) || (await plugin.rem.createRem());
+        if (cardRem) {
+          await cardRem.setText(await plugin.richText.text(action.text).value());
+          await cardRem.setIsCode(false);
+          try { await cardRem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+          try { await cardRem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+          await cardRem.setFontSize('H1');
+          await cardRem.setParent(target, currentPos++);
+        }
       } else if (action.type === 'spacer') {
         const spacer = await getSpareRem();
         if (spacer) {
@@ -908,29 +998,17 @@ async function onActivate(plugin: ReactRNPlugin) {
         await action.rem.setIsCode(false);
         try { await action.rem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
         try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+        await action.rem.setFontSize('H1');
         await action.rem.setParent(target, currentPos++);
       } else if (action.type === 'code_block') {
-        const wrapper = await getSpareRem();
-        if (wrapper) {
-          await wrapper.setText(await plugin.richText.text('.').value());
-          await wrapper.setIsCode(false);
-          try { await wrapper.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
-          try { await wrapper.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-          await wrapper.setParent(target, currentPos++);
-
-          await action.rem.setText(await plugin.richText.text(action.code).value());
-          await action.rem.setIsCode(true);
-          await action.rem.addPowerup(BuiltInPowerupCodes.Code);
-          try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-          await action.rem.setParent(wrapper, 0);
-          codeBlocksCount++;
-        } else {
-          await action.rem.setText(await plugin.richText.text(action.code).value());
-          await action.rem.setIsCode(true);
-          await action.rem.addPowerup(BuiltInPowerupCodes.Code);
-          await action.rem.setParent(target, currentPos++);
-          codeBlocksCount++;
-        }
+        // Нативный блок кода прямо на верхнем уровне, без обёртки точкой
+        await action.rem.setText(await plugin.richText.text(action.code).value());
+        await action.rem.setIsCode(true);
+        await action.rem.addPowerup(BuiltInPowerupCodes.Code);
+        try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+        await action.rem.setFontSize('H1');
+        await action.rem.setParent(target, currentPos++);
+        codeBlocksCount++;
       }
     }
 
@@ -948,15 +1026,11 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
 
     // 6. Управление спящими карточками для FSRS:
-    // Если конспект на стадии 0 (ещё не изучен), детальные карточки должны спать (DisableCards)
     try {
       const schedState = (await plugin.storage.getSynced<any>(`note_sched_${target._id}`)) || { stage: 0 };
       if ((schedState.stage || 0) === 0) {
         if (await target.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
           await target.removePowerup(BuiltInPowerupCodes.DisableCards);
-        }
-        if (cardEntry && (await cardEntry.rem.hasPowerup(BuiltInPowerupCodes.DisableCards))) {
-          await cardEntry.rem.removePowerup(BuiltInPowerupCodes.DisableCards);
         }
         for (const entry of entries) {
           if (!entry.isCard) {
