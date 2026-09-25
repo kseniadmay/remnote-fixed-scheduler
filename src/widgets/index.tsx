@@ -457,29 +457,59 @@ async function onActivate(plugin: ReactRNPlugin) {
 
     try {
       const rawChildren = await target.getChildrenRem();
-      const contentChildren: PluginRem[] = [];
-
-      // 1. Очищаем старые разделители и пустые строки во избежание дубликатов
-      for (const ch of rawChildren) {
-        const isDivider = await ch.hasPowerup(BuiltInPowerupCodes.Divider);
-        const text = (await plugin.richText.toString(ch.text || [])).trim();
-        if (isDivider || text.length === 0) {
-          await ch.remove();
-        } else {
-          contentChildren.push(ch);
-        }
-      }
-
-      if (contentChildren.length === 0) {
+      if (rawChildren.length === 0) {
         await plugin.app.toast('В документе не найдено абзацев для разделения');
         return;
       }
 
-      // 2. Вставляем перед каждым абзацем (начиная с первого):
-      //    пустая строка -> разделитель -> пустая строка
+      // Собираем информацию о текущих дочерних элементах
+      type ChildInfo = {
+        rem: PluginRem;
+        isDivider: boolean;
+        isEmpty: boolean;
+        text: string;
+      };
+
+      const childrenInfo: ChildInfo[] = [];
+      for (const ch of rawChildren) {
+        const isDivider = await ch.hasPowerup(BuiltInPowerupCodes.Divider);
+        const text = (await plugin.richText.toString(ch.text || [])).trim();
+        childrenInfo.push({
+          rem: ch,
+          isDivider,
+          isEmpty: !isDivider && text.length === 0,
+          text,
+        });
+      }
+
       let addedDividers = 0;
-      for (const child of contentChildren) {
-        const pos = await child.positionAmongstSiblings();
+
+      for (let i = 0; i < childrenInfo.length; i++) {
+        const current = childrenInfo[i];
+
+        // Пропускаем уже существующие разделители и пустые строки
+        if (current.isDivider || current.isEmpty) {
+          continue;
+        }
+
+        // Проверяем, есть ли уже разделитель непосредственно перед этим элементом
+        let hasDividerBefore = false;
+        for (let j = i - 1; j >= 0 && j >= i - 3; j--) {
+          if (childrenInfo[j].isDivider) {
+            hasDividerBefore = true;
+            break;
+          }
+          if (!childrenInfo[j].isEmpty) {
+            break;
+          }
+        }
+
+        if (hasDividerBefore) {
+          continue;
+        }
+
+        // Вставляем перед элементом: пустая строка -> разделитель -> пустая строка
+        const pos = await current.rem.positionAmongstSiblings();
         const currentPos = typeof pos === 'number' ? pos : 0;
 
         const emptyTop = await plugin.rem.createRem();
