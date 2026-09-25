@@ -217,20 +217,275 @@ async function onActivate(plugin: ReactRNPlugin) {
     },
   });
 
-  // Меню документа
+  // 6. Оформление заголовков юнитов и подтем с эмодзи
+  const UNIT_EMOJIS: Record<string, string> = {
+    // Модуль 1
+    '1.1': '🐍', '1.2': '⚙️', '1.3': '🔁', '1.4': '📦', '1.5': '🏗️',
+    '1.6': '🏷️', '1.7': '🧠', '1.8': '⚡', '1.9': '🛠️',
+    // Модуль 2
+    '2.1': '🌐', '2.2': '📡', '2.3': '🔌', '2.4': '🎸', '2.5': '⚡',
+    '2.6': '🔐', '2.7': '🛡️',
+    // Модуль 3
+    '3.1': '⏱️', '3.2': '🧵', '3.3': '🔗', '3.4': '🌳', '3.5': '🕸️', '3.6': '🎯',
+    // Модуль 4
+    '4.1': '🗄️', '4.2': '🔍', '4.3': '📐', '4.4': '💎', '4.5': '🔄', '4.6': '🔴',
+    // Модуль 5
+    '5.1': '🧭', '5.2': '🍰', '5.3': '🏭', '5.4': '🎭', '5.5': '🧩', '5.6': '🏛️',
+    // Модуль 6
+    '6.1': '🐙', '6.2': '🐳', '6.3': '🐋', '6.4': '🚀', '6.5': '🐧', '6.6': '🐇',
+  };
+
+  function getThematicEmoji(title: string): string | null {
+    const lower = title.toLowerCase();
+    if (lower.includes('docker') && (lower.includes('продвинут') || lower.includes('compose'))) return '🐋';
+    if (lower.includes('docker')) return '🐳';
+    if (lower.includes('git')) return '🐙';
+    if (lower.includes('ci') || lower.includes('cd')) return '🚀';
+    if (lower.includes('linux') || lower.includes('unix') || lower.includes('bash')) return '🐧';
+    if (lower.includes('очеред') || lower.includes('celery') || lower.includes('rabbitmq')) return '🐇';
+    if (lower.includes('мониторинг') || lower.includes('prometheus') || lower.includes('grafana')) return '📊';
+    if (lower.includes('тест') || lower.includes('pytest')) return '🧪';
+    if (lower.includes('django')) return '🎸';
+    if (lower.includes('fastapi') || lower.includes('asyncio')) return '⚡';
+    if (lower.includes('postgres') || lower.includes('sql') || lower.includes('баз данных') || lower.includes('бд')) return '🗄️';
+    if (lower.includes('redis')) return '🔴';
+    if (lower.includes('сеть') || lower.includes('network') || lower.includes('tcp') || lower.includes('ip')) return '🌐';
+    if (lower.includes('http') || lower.includes('rest') || lower.includes('api')) return '🔌';
+    if (lower.includes('безопасн') || lower.includes('security')) return '🛡️';
+    if (lower.includes('jwt') || lower.includes('auth') || lower.includes('парол') || lower.includes('авториз')) return '🔐';
+    if (lower.includes('алгоритм') || lower.includes('структур')) return '🧩';
+    if (lower.includes('архитектур')) return '🏛️';
+    if (lower.includes('паттерн')) return '🎭';
+    if (lower.includes('памят') || lower.includes('gc') || lower.includes('garbage')) return '🧠';
+    if (lower.includes('типизац') || lower.includes('type')) return '🏷️';
+    if (lower.includes('ооп') || lower.includes('класс')) return '📦';
+    if (lower.includes('итератор') || lower.includes('генератор')) return '🔁';
+    if (lower.includes('декоратор')) return '🎀';
+    if (lower.includes('функци')) return '⚙️';
+    if (lower.includes('python')) return '🐍';
+    return null;
+  }
+
+  async function formatUnitHeaders(plugin: ReactRNPlugin, rootRem?: PluginRem) {
+    const target = rootRem || (await plugin.focus.getFocusedRem());
+    if (!target) {
+      await plugin.app.toast('Откройте модуль или список юнитов и повторите команду');
+      return;
+    }
+
+    let formattedCount = 0;
+    const children = await target.getChildrenRem();
+
+    for (const child of children) {
+      const rawText = (await plugin.richText.toString(child.text || [])).trim();
+      if (!rawText) continue;
+
+      const unitMatch = rawText.match(/^(?:[^\w\sа-яА-ЯёЁ]*\s*)?(?:Юнит\s+(\d+\.\d+))\s*[·:-]?\s*(.*)$/i);
+      if (unitMatch) {
+        const unitNum = unitMatch[1];
+        let unitTitle = unitMatch[2].trim();
+        unitTitle = unitTitle.replace(/^[^\w\sа-яА-ЯёЁ]+\s*/, '').trim();
+
+        const emoji = UNIT_EMOJIS[unitNum] || getThematicEmoji(unitTitle) || '📘';
+        const formattedTitle = `${emoji} Юнит ${unitNum} · ${unitTitle}`;
+
+        if (formattedTitle !== rawText) {
+          await child.setText(await plugin.richText.text(formattedTitle).value());
+          formattedCount++;
+        }
+      } else {
+        const emoji = getThematicEmoji(rawText);
+        if (emoji && !rawText.startsWith(emoji)) {
+          const cleanText = rawText.replace(/^[^\w\sа-яА-ЯёЁ]+\s*/, '').trim();
+          const formattedTitle = `${emoji} ${cleanText}`;
+          await child.setText(await plugin.richText.text(formattedTitle).value());
+          formattedCount++;
+        }
+      }
+    }
+
+    await plugin.app.toast(`🎨 Готово! Красиво оформлено заголовков юнитов: ${formattedCount}`);
+  }
+
+  // 7. Форматирование блоков кода (убрать bullet • и включить Code Rem)
+  async function formatCodeBlocks(plugin: ReactRNPlugin, rootRem?: PluginRem) {
+    const target = rootRem || (await plugin.focus.getFocusedRem());
+    if (!target) {
+      await plugin.app.toast('Откройте конспект и повторите команду');
+      return;
+    }
+
+    let codeCount = 0;
+
+    async function processRem(rem: PluginRem) {
+      const text = (await plugin.richText.toString(rem.text || [])).trim();
+
+      const hasCodeMarker = text.startsWith('```');
+      const isCodeLine = (
+        text.startsWith('def ') ||
+        text.startsWith('class ') ||
+        text.startsWith('import ') ||
+        text.startsWith('from ') ||
+        text.startsWith('async def ') ||
+        text.startsWith('pip install') ||
+        text.startsWith('docker run') ||
+        text.startsWith('docker build') ||
+        text.startsWith('docker-compose') ||
+        text.startsWith('git ') ||
+        text.startsWith('$ ') ||
+        text.includes('print(') ||
+        text.includes('return ') ||
+        text.includes('if __name__ ==')
+      ) && !text.includes('::') && !text.includes('?');
+
+      if (hasCodeMarker || isCodeLine) {
+        const isCodePowerup = await rem.hasPowerup(BuiltInPowerupCodes.Code);
+        if (!isCodePowerup) {
+          let cleanCode = text
+            .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
+            .replace(/\n?```$/, '')
+            .trim();
+
+          await rem.setText(await plugin.richText.text(cleanCode).value());
+          await rem.addPowerup(BuiltInPowerupCodes.Code);
+          codeCount++;
+        }
+      }
+
+      const children = await rem.getChildrenRem();
+      for (const ch of children) {
+        await processRem(ch);
+      }
+    }
+
+    try {
+      await processRem(target);
+      await plugin.app.toast(`💻 Готово! Оформлено блоков кода (убран bullet): ${codeCount}`);
+    } catch (e) {
+      console.error('formatCodeBlocks failed:', e);
+      await plugin.app.toast(`Ошибка при форматировании кода: ${String(e)}`);
+    }
+  }
+
+  // 8. Оформление структуры конспекта (пустая строка + разделитель + пустая строка)
+  async function formatNoteLayout(plugin: ReactRNPlugin, rootRem?: PluginRem) {
+    const target = rootRem || (await plugin.focus.getFocusedRem());
+    if (!target) {
+      await plugin.app.toast('Откройте конспект и повторите команду');
+      return;
+    }
+
+    try {
+      const children = await target.getChildrenRem();
+      const contentChildren: PluginRem[] = [];
+      for (const ch of children) {
+        const isDivider = await ch.hasPowerup(BuiltInPowerupCodes.Divider);
+        const text = (await plugin.richText.toString(ch.text || [])).trim();
+        if (!isDivider && text.length > 0) {
+          contentChildren.push(ch);
+        }
+      }
+
+      if (contentChildren.length === 0) {
+        await plugin.app.toast('В документе не найдено абзацев для разделения');
+        return;
+      }
+
+      let addedDividers = 0;
+      for (let i = 0; i < contentChildren.length; i++) {
+        const child = contentChildren[i];
+        const pos = await child.positionAmongstSiblings();
+        const currentPos = typeof pos === 'number' ? pos : 0;
+
+        const emptyTop = await plugin.rem.createRem();
+        if (emptyTop) {
+          await emptyTop.setText(await plugin.richText.text('').value());
+          await emptyTop.setParent(target, currentPos);
+        }
+
+        const dividerRem = await plugin.rem.createRem();
+        if (dividerRem) {
+          await dividerRem.setText(await plugin.richText.text('').value());
+          await dividerRem.addPowerup(BuiltInPowerupCodes.Divider);
+          await dividerRem.setParent(target, currentPos + 1);
+          addedDividers++;
+        }
+
+        const emptyBottom = await plugin.rem.createRem();
+        if (emptyBottom) {
+          await emptyBottom.setText(await plugin.richText.text('').value());
+          await emptyBottom.setParent(target, currentPos + 2);
+        }
+      }
+
+      await plugin.app.toast(`📑 Готово! Оформлено разделителей абзацев: ${addedDividers}`);
+    } catch (e) {
+      console.error('formatNoteLayout failed:', e);
+      await plugin.app.toast(`Ошибка при оформлении абзацев: ${String(e)}`);
+    }
+  }
+
+  // Регистрация команд палитры (Ctrl+K)
+  await plugin.app.registerCommand({
+    id: 'format-unit-headers',
+    name: '🎨 Оформить заголовки юнитов и добавить эмодзи',
+    action: async () => {
+      await formatUnitHeaders(plugin);
+    },
+  });
+
+  await plugin.app.registerCommand({
+    id: 'format-code-blocks',
+    name: '💻 Превратить код в блоки кода (убрать bullet •)',
+    action: async () => {
+      await formatCodeBlocks(plugin);
+    },
+  });
+
+  await plugin.app.registerCommand({
+    id: 'format-note-layout',
+    name: '📑 Оформить абзацы конспекта (пустая строка + разделитель)',
+    action: async () => {
+      await formatNoteLayout(plugin);
+    },
+  });
+
+  await plugin.app.registerCommand({
+    id: 'format-full-note',
+    name: '✨ Полное оформление конспекта (разделители + код без bullet)',
+    action: async () => {
+      await formatCodeBlocks(plugin);
+      await formatNoteLayout(plugin);
+    },
+  });
+
+  // Регистрация команд в меню документа (...)
   try {
     await plugin.app.registerMenuItem({
-      id: 'menu-renumber-notes',
-      name: '🔢 Выровнять нумерацию конспектов (01, 02, 03...)',
+      id: 'menu-format-unit-headers',
+      name: '🎨 Оформить заголовки юнитов (эмодзи)',
       location: PluginCommandMenuLocation.DocumentMenu,
       action: async (args: any) => {
         const remId = args?.remId;
         const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
-        if (rem) await renumberNotes(plugin, rem);
+        if (rem) await formatUnitHeaders(plugin, rem);
+      },
+    });
+
+    await plugin.app.registerMenuItem({
+      id: 'menu-format-full-note',
+      name: '✨ Оформить конспект (разделители + код без bullet)',
+      location: PluginCommandMenuLocation.DocumentMenu,
+      action: async (args: any) => {
+        const remId = args?.remId;
+        const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
+        if (rem) {
+          await formatCodeBlocks(plugin, rem);
+          await formatNoteLayout(plugin, rem);
+        }
       },
     });
   } catch (_) {}
-
 
 }
 
