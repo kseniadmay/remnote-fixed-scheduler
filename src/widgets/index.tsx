@@ -607,6 +607,10 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   function cleanHeadingTitle(raw: string): string {
     let s = raw.trim();
+    // Если весь заголовок был ошибочно обернут в обратные кавычки `...`
+    if (s.startsWith('`') && s.endsWith('`') && s.length > 2) {
+      s = s.slice(1, -1).trim();
+    }
     // Срезаем начальные решетки Markdown (#, ##, ### и т.д.)
     s = s.replace(/^#{1,6}\s*/, '');
     // Удаляем эмодзи в начале заголовка
@@ -625,6 +629,8 @@ async function onActivate(plugin: ReactRNPlugin) {
     return false;
   }
 
+  const HEADING_KEYWORD_REGEX = /^(Что такое|Зачем нуж|Как устро|Как выбира|Почему|Когда использова|Где использова|В чём разниц|Анатомия|Базов|Сравнени|Семантик|Производительн|Практическ|Итог|Резюме|Особенност|Следстви|Guard-|Структурн|Общее:|Синтаксис|Менеджер|Декоратор|Исключени|Генератор|Итератор|Коллекци|Метод|Функци)\b/i;
+
   function checkIsHeading(rawText: string, cleanTitle: string, fontSize: 'H1' | 'H2' | 'H3' | undefined, isCard: boolean): boolean {
     if (isCard) return false;
     if (!cleanTitle || cleanTitle.length < 2) return false;
@@ -641,14 +647,41 @@ async function onActivate(plugin: ReactRNPlugin) {
     const words = cleanTitle.split(/\s+/).filter(w => w.length > 0);
     if (words.length > 10) return false;
 
-    // Проверяем: начинается ли с # или имел реальный H1, H2, H3
+    // 1. Явный заголовок с решетками Markdown
     const startsWithHash = /^#{1,6}\s+/.test(rawText) || rawText.startsWith('##') || rawText.startsWith('###') || rawText.startsWith('#');
     if (startsWithHash) {
       return true;
     }
 
+    // 2. Стиль шрифта H1, H2, H3
     if (fontSize === 'H1' || fontSize === 'H2' || fontSize === 'H3') {
       return true;
+    }
+
+    // 3. Вопросительный заголовок раздела
+    if (cleanTitle.endsWith('?')) {
+      return true;
+    }
+
+    // 4. Заголовок по ключевому слову темы
+    if (HEADING_KEYWORD_REGEX.test(cleanTitle)) {
+      return true;
+    }
+
+    // 5. Заголовок с тире (Термин – пояснение) без точки на конце
+    if (/\s+[–—]\s+/.test(cleanTitle) && cleanTitle.length <= 65) {
+      const term = cleanTitle.split(/\s+[–—]\s+/)[0].trim();
+      if (!/^(git\b|docker\b|\$|npm\b|pip\b)/i.test(term) && !term.startsWith('`')) {
+        return true;
+      }
+    }
+
+    // 6. Короткое название раздела (1-4 слова, заглавная буква или спец-символ, до 40 символов)
+    if (words.length <= 4 && cleanTitle.length <= 40) {
+      const firstChar = cleanTitle.charAt(0);
+      if (firstChar === firstChar.toUpperCase() || cleanTitle.startsWith('__') || cleanTitle.startsWith('@')) {
+        return true;
+      }
     }
 
     return false;

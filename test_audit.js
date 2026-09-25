@@ -13,11 +13,16 @@ function calculateNextDays(repsSoFar) {
 
 function cleanHeadingTitle(raw) {
   let s = raw.trim();
+  if (s.startsWith('`') && s.endsWith('`') && s.length > 2) {
+    s = s.slice(1, -1).trim();
+  }
   s = s.replace(/^#{1,6}\s*/, '');
   s = s.replace(/^[\p{Emoji}\u200d\ufe0f\s]+/u, '');
   s = s.replace(/^[-*•–—.]+\s*/, '');
   return s.trim();
 }
+
+const HEADING_KEYWORD_REGEX = /^(Что такое|Зачем нуж|Как устро|Как выбира|Почему|Когда использова|Где использова|В чём разниц|Анатомия|Базов|Сравнени|Семантик|Производительн|Практическ|Итог|Резюме|Особенност|Следстви|Guard-|Структурн|Общее:|Синтаксис|Менеджер|Декоратор|Исключени|Генератор|Итератор|Коллекци|Метод|Функци)\b/i;
 
 function checkIsHeading(rawText, cleanTitle, fontSize, isCard) {
   if (isCard) return false;
@@ -27,9 +32,24 @@ function checkIsHeading(rawText, cleanTitle, fontSize, isCard) {
   if (/[.!?]\s+[А-ЯA-Z]/.test(cleanTitle)) return false;
   const words = cleanTitle.split(/\s+/).filter(w => w.length > 0);
   if (words.length > 10) return false;
+
   const startsWithHash = /^#{1,6}\s+/.test(rawText) || rawText.startsWith('##') || rawText.startsWith('###') || rawText.startsWith('#');
   if (startsWithHash) return true;
   if (fontSize === 'H1' || fontSize === 'H2' || fontSize === 'H3') return true;
+  if (cleanTitle.endsWith('?')) return true;
+  if (HEADING_KEYWORD_REGEX.test(cleanTitle)) return true;
+  if (/\s+[–—]\s+/.test(cleanTitle) && cleanTitle.length <= 65) {
+    const term = cleanTitle.split(/\s+[–—]\s+/)[0].trim();
+    if (!/^(git\b|docker\b|\$|npm\b|pip\b)/i.test(term) && !term.startsWith('`')) {
+      return true;
+    }
+  }
+  if (words.length <= 4 && cleanTitle.length <= 40) {
+    const firstChar = cleanTitle.charAt(0);
+    if (firstChar === firstChar.toUpperCase() || cleanTitle.startsWith('__') || cleanTitle.startsWith('@')) {
+      return true;
+    }
+  }
   return false;
 }
 
