@@ -732,12 +732,16 @@ async function onActivate(plugin: ReactRNPlugin) {
         const isCode = (await rem.hasPowerup(BuiltInPowerupCodes.Code)) || (await rem.isCode());
         const isCard = text.includes('📖 Перечитать') || text.includes('Конспект перечитан');
         const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
+        const cleanTitle = cleanHeadingTitle(text);
+
+        // Заголовок ОБЯЗАН иметь реальный текст (минимум 3 буквы) и не быть пустым
         const isHeading =
           !isCard &&
+          cleanTitle.length >= 3 &&
           (text.startsWith('#') || (await rem.getFontSize()) === 'H2' || (await rem.getFontSize()) === 'H1') &&
-          russianWords.length < 10 &&
+          russianWords.length < 15 &&
           !isCodeSnippet(text);
-        const cleanTitle = isHeading ? cleanHeadingTitle(text) : '';
+
         const isDot = text === '.' || text === '# .' || text === '•';
         const isProseInCode = (isCode || text.startsWith('```')) && russianWords.length >= 4;
         const isCodeCandidate = !isHeading && !isCard && !isDot && (isCode || isCodeSnippet(text)) && !isProseInCode;
@@ -774,14 +778,23 @@ async function onActivate(plugin: ReactRNPlugin) {
         plan.push({ type: 'spacer' });
       }
 
-      // 2. Обходим остальные элементы
+      // 2. Обходим остальные элементы с дедупликацией
       let isFirstSection = true;
+      const seenHeadings = new Set<string>();
+      const seenProse = new Set<string>();
+      const seenCode = new Set<string>();
 
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
         if (entry.isCard) continue;
 
         if (entry.isHeading) {
+          // Исключаем дублирующиеся заголовки с одинаковым текстом
+          if (seenHeadings.has(entry.cleanTitle)) {
+            continue;
+          }
+          seenHeadings.add(entry.cleanTitle);
+
           if (!isFirstSection) {
             plan.push({ type: 'spacer' });
             plan.push({ type: 'spacer' });
@@ -792,7 +805,11 @@ async function onActivate(plugin: ReactRNPlugin) {
         }
 
         if (entry.isProseInCode) {
-          plan.push({ type: 'prose', rem: entry.rem, text: cleanProseText(entry.text) });
+          const prose = cleanProseText(entry.text);
+          if (prose.length > 0 && !seenProse.has(prose)) {
+            seenProse.add(prose);
+            plan.push({ type: 'prose', rem: entry.rem, text: prose });
+          }
           continue;
         }
 
@@ -801,12 +818,19 @@ async function onActivate(plugin: ReactRNPlugin) {
             .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
             .replace(/\n?```$/, '')
             .trim();
-          plan.push({ type: 'code_block', rem: entry.rem, code: cleanCode });
+          if (cleanCode.length > 0 && !seenCode.has(cleanCode)) {
+            seenCode.add(cleanCode);
+            plan.push({ type: 'code_block', rem: entry.rem, code: cleanCode });
+          }
           continue;
         }
 
         if (!entry.isDot && entry.text.length > 0) {
-          plan.push({ type: 'prose', rem: entry.rem, text: cleanProseText(entry.text) });
+          const prose = cleanProseText(entry.text);
+          if (prose.length > 0 && !seenProse.has(prose)) {
+            seenProse.add(prose);
+            plan.push({ type: 'prose', rem: entry.rem, text: prose });
+          }
         }
       }
 
@@ -842,7 +866,7 @@ async function onActivate(plugin: ReactRNPlugin) {
             await spacer.setIsCode(false);
             try { await spacer.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
             try { await spacer.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-            await spacer.setFontSize('H1'); // сброс размера
+            await spacer.setFontSize('H1'); // сброс H2 размера
             await spacer.setParent(target, currentPos++);
           }
         } else if (action.type === 'heading') {
@@ -860,7 +884,6 @@ async function onActivate(plugin: ReactRNPlugin) {
           try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
           await action.rem.setParent(target, currentPos++);
         } else if (action.type === 'code_block') {
-          // Создаем или берем узел-обертку "." на уровне target
           const wrapper = await getSpareRem();
           if (wrapper) {
             await wrapper.setText(await plugin.richText.text('.').value());
@@ -869,7 +892,6 @@ async function onActivate(plugin: ReactRNPlugin) {
             try { await wrapper.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
             await wrapper.setParent(target, currentPos++);
 
-            // Сам блок кода размещаем дочерним элементом обертки "."
             await action.rem.setText(await plugin.richText.text(action.code).value());
             await action.rem.setIsCode(true);
             await action.rem.addPowerup(BuiltInPowerupCodes.Code);
@@ -886,15 +908,16 @@ async function onActivate(plugin: ReactRNPlugin) {
         }
       }
 
-      // 5. Очищаем оставшиеся узлы из пула (превращаем в пустые спейсеры в конце или скрываем)
+      // 5. Очищаем лишние узлы: сбрасываем H2 и текст, НЕ добавляем их в документ!
       while (poolIdx < remPool.length) {
         const leftover = remPool[poolIdx++];
         try {
           await leftover.setText(await plugin.richText.text('').value());
           await leftover.setIsCode(false);
+          await leftover.setFontSize('H1'); // обязательно сбрасываем H2!
           try { await leftover.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
           try { await leftover.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-          await leftover.setParent(target, currentPos++);
+          try { await leftover.remove(); } catch (_) {}
         } catch (_) {}
       }
 
