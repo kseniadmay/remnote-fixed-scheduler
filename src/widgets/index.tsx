@@ -6,6 +6,8 @@ import {
   BuiltInPowerupCodes,
   WidgetLocation,
   PluginCommandMenuLocation,
+  RichTextInterface,
+  RichTextElementInterface,
 } from '@remnote/plugin-sdk';
 
 // ============================================================
@@ -653,6 +655,104 @@ async function onActivate(plugin: ReactRNPlugin) {
     return false;
   }
 
+  /**
+   * Преобразует нативный RichText RemNote в Markdown-строку с сохранением:
+   * - инлайн-кода (q: true) -> `code`
+   * - LaTeX ($...$) -> $latex$
+   * - жирного текста (b: true) -> **bold**
+   */
+  function richTextToMarkdown(richText: RichTextInterface | undefined): string {
+    if (!richText || !Array.isArray(richText)) return '';
+    return richText
+      .map(elem => {
+        if (typeof elem === 'string') return elem;
+        if (!elem) return '';
+        // Нативный LaTeX в RemNote: { i: 'x', text: '...' }
+        if (elem.i === 'x' && 'text' in elem && elem.text) {
+          return `$${elem.text}$`;
+        }
+        // Текстовый элемент RemNote: { i: 'm', text: '...', q?: true, b?: true, ... }
+        if (elem.i === 'm' && 'text' in elem) {
+          let t = elem.text || '';
+          if (elem.q) {
+            t = `\`${t}\``;
+          }
+          if (elem.b) {
+            t = `**${t}**`;
+          }
+          return t;
+        }
+        // Ссылка на Rem или удаленный Rem
+        if (elem.i === 'q') {
+          if ('textOfDeletedRem' in elem && elem.textOfDeletedRem) {
+            return richTextToMarkdown(elem.textOfDeletedRem);
+          }
+          return '';
+        }
+        if ('text' in elem && typeof elem.text === 'string') {
+          return elem.text;
+        }
+        return '';
+      })
+      .join('');
+  }
+
+  /**
+   * Преобразует Markdown-строку в нативный RichTextInterface RemNote:
+   * - `code` -> { i: 'm', text: 'code', q: true } (инлайн-код)
+   * - $formula$ -> { i: 'x', text: 'formula' } (KaTeX)
+   * - **bold** -> { i: 'm', text: 'bold', b: true } (жирный шрифт)
+   * - обычный текст -> { i: 'm', text: 'plain' }
+   */
+  function parseMarkdownToRichText(text: string): RichTextElementInterface[] {
+    if (!text) {
+      return [{ i: 'm', text: '' }];
+    }
+    const result: RichTextElementInterface[] = [];
+    // Регулярное выражение для поиска токенов:
+    // 1) $...$ — формулы KaTeX / Big-O
+    // 2) `...` — моноширинный инлайн-код
+    // 3) **...** — жирный шрифт
+    const regex = /(\$[^$\n]+\$|`[^`\n]+`|\*\*[^*\n]+\*\*)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text)) !== null) {
+      const matchIndex = match.index;
+      if (matchIndex > lastIndex) {
+        const plain = text.substring(lastIndex, matchIndex);
+        if (plain.length > 0) {
+          result.push({ i: 'm', text: plain });
+        }
+      }
+
+      const token = match[0];
+      if (token.startsWith('$') && token.endsWith('$') && token.length > 2) {
+        const formula = token.slice(1, -1);
+        result.push({ i: 'x', text: formula });
+      } else if (token.startsWith('`') && token.endsWith('`') && token.length > 2) {
+        const code = token.slice(1, -1);
+        result.push({ i: 'm', text: code, q: true });
+      } else if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
+        const bold = token.slice(2, -2);
+        result.push({ i: 'm', text: bold, b: true });
+      } else {
+        result.push({ i: 'm', text: token });
+      }
+
+      lastIndex = regex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      const tail = text.substring(lastIndex);
+      if (tail.length > 0) {
+        result.push({ i: 'm', text: tail });
+      }
+    }
+
+    return result.length > 0 ? result : [{ i: 'm', text: '' }];
+  }
+
   function cleanProseText(text: string): string {
     let s = text
       .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
@@ -691,19 +791,36 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
 
     // 2. Оборачиваем CLI команды Git
-    s = s.replace(/(?<![\w])(git\s+(?:checkout|switch|merge|rebase|branch|commit|status|push|pull|add|reset|log|diff|clone|remote|stash|tag|init)(?:\s+-[a-zA-Z0-9_-]+|\s+--[a-zA-Z0-9_-]+|\s+<[^>]+>|\s+[a-zA-Z0-9_./~^@{}-]+)*)(?![\w])/g, wrapAndPreserve);
+    s = s.replace(/(?<![\w])(git\s+(?:checkout|switch|merge|rebase|branch|commit|status|push|pull|add|reset|log|diff|clone|remote|stash|tag|init|cherry-pick|restore|show|fetch|rev-parse)(?:\s+-[a-zA-Z0-9_-]+|\s+--[a-zA-Z0-9_-]+|\s+<[^>]+>|\s+[a-zA-Z0-9_./~^@{}-]+)*)(?![\w])/g, wrapAndPreserve);
 
-    // 3. Отдельные флаги CLI: --abort, --continue, --skip, --hard, --soft, --mixed, --oneline, --graph, -b, -m, -d, -D
-    s = s.replace(/(?<![\w])(--(?:abort|continue|skip|hard|soft|mixed|oneline|graph|amend|no-ff|squash|all))(?![\w])/g, wrapAndPreserve);
+    // 3. Отдельные флаги CLI: --abort, --continue, --skip, --hard, --soft, --mixed, --oneline, --graph, --amend, --no-ff, --squash, --all, --cached, --staged, --patch, --force, --dry-run
+    s = s.replace(/(?<![\w])(--(?:abort|continue|skip|hard|soft|mixed|oneline|graph|amend|no-ff|squash|all|cached|staged|patch|force|dry-run))(?![\w])/g, wrapAndPreserve);
 
-    // 4. Системные пути и refs: .git/HEAD, .git/refs/heads/, refs/heads/, .gitignore
+    // 4. Одиночные флаги CLI: -b, -m, -d, -D, -a, -p, -v, -f (только как изолированные флаги с дефисом)
+    s = s.replace(/(?<=\s)(-[bmdfapv])(?=[\s.,:;!?]|$)/g, wrapAndPreserve);
+
+    // 5. Системные пути и refs Git
     s = s.replace(/(?<![\w])(\.git(?:\/[a-zA-Z0-9_.-]+)*)(?![\w])/g, wrapAndPreserve);
     s = s.replace(/(?<![\w])(refs\/heads(?:\/[a-zA-Z0-9_.-]+)*)(?![\w])/g, wrapAndPreserve);
+    s = s.replace(/(?<![\w])(\.gitignore|\.gitattributes)(?![\w])/g, wrapAndPreserve);
+    s = s.replace(/(?<![\w])(HEAD(?:~[0-9]+|\^[0-9]*|)|FETCH_HEAD|ORIG_HEAD|MERGE_HEAD)(?![\w])/g, wrapAndPreserve);
 
-    // 5. Типографика тире: дефисы между словами заменяем на длинное тире
+    // 6. Python dunder методы
+    s = s.replace(/(?<![\w])(__(?:init|str|repr|eq|len|getitem|enter|exit|call|iter|next|name|main|dict|slots)__)(?![\w])/g, wrapAndPreserve);
+
+    // 7. Встроенные вызовы функций Python
+    s = s.replace(/(?<![\w])((?:range|len|isinstance|issubclass|enumerate|zip|sorted|print|type|id|repr|super)\(\))(?![\w])/g, wrapAndPreserve);
+
+    // 8. Литералы и ключевые параметры Python
+    s = s.replace(/(?<![\w])(\*args|\*\*kwargs|\bNone\b|\bTrue\b|\bFalse\b|\bself\b|\bcls\b)(?![\w])/g, wrapAndPreserve);
+
+    // 9. Команды терминала Python/DevOps
+    s = s.replace(/(?<![\w])(python\s+(?:-m\s+)?[a-zA-Z0-9_.-]+|pip\s+install(?:\s+-[a-zA-Z0-9_-]+|\s+[a-zA-Z0-9_.-]+)+|pytest|docker\s+(?:run|build|ps|stop|exec)|docker-compose(?:\s+[a-zA-Z0-9_-]+)*)(?![\w])/g, wrapAndPreserve);
+
+    // 10. Типографика тире: дефисы между словами заменяем на длинное тире
     s = s.replace(/\s+[-–]\s+/g, ' — ');
 
-    // 6. Восстанавливаем все защищенные блоки кода
+    // 11. Восстанавливаем все защищенные блоки кода
     s = s.replace(/__CODE_(\d+)__/g, (_m, idx) => `\`${preservedCode[Number(idx)]}\``);
 
     return s.trim();
@@ -789,7 +906,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
-        const rawText = (await plugin.richText.toString(child.text || [])).trim();
+        const rawText = (richTextToMarkdown(child.text) || (await plugin.richText.toString(child.text || []))).trim();
         const isDivider = await child.hasPowerup(BuiltInPowerupCodes.Divider);
 
         // 1. Проверяем, является ли узел мусорной обёрткой (например ".", "# .", "#", "•")
@@ -838,7 +955,7 @@ async function onActivate(plugin: ReactRNPlugin) {
           } else {
             // Ошибочно проставленный префикс ## у обычного абзаца — восстанавливаем нормальную прозу
             const fixedText = cleanProseText(rawText);
-            await child.setText(await plugin.richText.text(fixedText).value());
+            await child.setText(parseMarkdownToRichText(fixedText));
             await child.setFontSize(undefined);
             try { await child.removePowerup(BuiltInPowerupCodes.Header); } catch (_) {}
           }
@@ -889,8 +1006,13 @@ async function onActivate(plugin: ReactRNPlugin) {
     for (const rem of allRemList) {
       let text = '';
       try {
-        text = (await plugin.richText.toString(rem.text || [])).trim();
-      } catch (_) {}
+        const mdText = richTextToMarkdown(rem.text);
+        text = mdText.trim() || (await plugin.richText.toString(rem.text || [])).trim();
+      } catch (_) {
+        try {
+          text = (await plugin.richText.toString(rem.text || [])).trim();
+        } catch (_) {}
+      }
       const isCode = (await rem.hasPowerup(BuiltInPowerupCodes.Code)) || (await rem.isCode());
       const isCard = text.includes('📖 Перечитать') || text.includes('Конспект перечитан');
       const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
@@ -1066,7 +1188,7 @@ async function onActivate(plugin: ReactRNPlugin) {
         await action.rem.setParent(target, currentPos++);
         headingsCount++;
       } else if (action.type === 'prose') {
-        await action.rem.setText(await plugin.richText.text(action.text).value());
+        await action.rem.setText(parseMarkdownToRichText(action.text));
         await action.rem.setIsCode(false);
         try { await action.rem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
         try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}

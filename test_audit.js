@@ -45,6 +45,84 @@ function isAsciiDiagram(text) {
   return false;
 }
 
+function richTextToMarkdown(richText) {
+  if (!richText || !Array.isArray(richText)) return '';
+  return richText
+    .map(elem => {
+      if (typeof elem === 'string') return elem;
+      if (!elem) return '';
+      if (elem.i === 'x' && 'text' in elem && elem.text) {
+        return `$${elem.text}$`;
+      }
+      if (elem.i === 'm' && 'text' in elem) {
+        let t = elem.text || '';
+        if (elem.q) {
+          t = `\`${t}\``;
+        }
+        if (elem.b) {
+          t = `**${t}**`;
+        }
+        return t;
+      }
+      if (elem.i === 'q') {
+        if ('textOfDeletedRem' in elem && elem.textOfDeletedRem) {
+          return richTextToMarkdown(elem.textOfDeletedRem);
+        }
+        return '';
+      }
+      if ('text' in elem && typeof elem.text === 'string') {
+        return elem.text;
+      }
+      return '';
+    })
+    .join('');
+}
+
+function parseMarkdownToRichText(text) {
+  if (!text) {
+    return [{ i: 'm', text: '' }];
+  }
+  const result = [];
+  const regex = /(\$[^$\n]+\$|`[^`\n]+`|\*\*[^*\n]+\*\*)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    const matchIndex = match.index;
+    if (matchIndex > lastIndex) {
+      const plain = text.substring(lastIndex, matchIndex);
+      if (plain.length > 0) {
+        result.push({ i: 'm', text: plain });
+      }
+    }
+
+    const token = match[0];
+    if (token.startsWith('$') && token.endsWith('$') && token.length > 2) {
+      const formula = token.slice(1, -1);
+      result.push({ i: 'x', text: formula });
+    } else if (token.startsWith('`') && token.endsWith('`') && token.length > 2) {
+      const code = token.slice(1, -1);
+      result.push({ i: 'm', text: code, q: true });
+    } else if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
+      const bold = token.slice(2, -2);
+      result.push({ i: 'm', text: bold, b: true });
+    } else {
+      result.push({ i: 'm', text: token });
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    const tail = text.substring(lastIndex);
+    if (tail.length > 0) {
+      result.push({ i: 'm', text: tail });
+    }
+  }
+
+  return result.length > 0 ? result : [{ i: 'm', text: '' }];
+}
+
 function cleanProseText(text) {
   let s = text
     .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
@@ -83,19 +161,36 @@ function cleanProseText(text) {
   }
 
   // 2. Оборачиваем CLI команды Git
-  s = s.replace(/(?<![\w])(git\s+(?:checkout|switch|merge|rebase|branch|commit|status|push|pull|add|reset|log|diff|clone|remote|stash|tag|init)(?:\s+-[a-zA-Z0-9_-]+|\s+--[a-zA-Z0-9_-]+|\s+<[^>]+>|\s+[a-zA-Z0-9_./~^@{}-]+)*)(?![\w])/g, wrapAndPreserve);
+  s = s.replace(/(?<![\w])(git\s+(?:checkout|switch|merge|rebase|branch|commit|status|push|pull|add|reset|log|diff|clone|remote|stash|tag|init|cherry-pick|restore|show|fetch|rev-parse)(?:\s+-[a-zA-Z0-9_-]+|\s+--[a-zA-Z0-9_-]+|\s+<[^>]+>|\s+[a-zA-Z0-9_./~^@{}-]+)*)(?![\w])/g, wrapAndPreserve);
 
-  // 3. Отдельные флаги CLI
-  s = s.replace(/(?<![\w])(--(?:abort|continue|skip|hard|soft|mixed|oneline|graph|amend|no-ff|squash|all))(?![\w])/g, wrapAndPreserve);
+  // 3. Отдельные флаги CLI: --abort, --continue, --skip, --hard, --soft, --mixed, --oneline, --graph, --amend, --no-ff, --squash, --all, --cached, --staged, --patch, --force, --dry-run
+  s = s.replace(/(?<![\w])(--(?:abort|continue|skip|hard|soft|mixed|oneline|graph|amend|no-ff|squash|all|cached|staged|patch|force|dry-run))(?![\w])/g, wrapAndPreserve);
 
-  // 4. Системные пути и refs
+  // 4. Одиночные флаги CLI: -b, -m, -d, -D, -a, -p, -v, -f (только как изолированные флаги с дефисом)
+  s = s.replace(/(?<=\s)(-[bmdfapv])(?=[\s.,:;!?]|$)/g, wrapAndPreserve);
+
+  // 5. Системные пути и refs Git
   s = s.replace(/(?<![\w])(\.git(?:\/[a-zA-Z0-9_.-]+)*)(?![\w])/g, wrapAndPreserve);
   s = s.replace(/(?<![\w])(refs\/heads(?:\/[a-zA-Z0-9_.-]+)*)(?![\w])/g, wrapAndPreserve);
+  s = s.replace(/(?<![\w])(\.gitignore|\.gitattributes)(?![\w])/g, wrapAndPreserve);
+  s = s.replace(/(?<![\w])(HEAD(?:~[0-9]+|\^[0-9]*|)|FETCH_HEAD|ORIG_HEAD|MERGE_HEAD)(?![\w])/g, wrapAndPreserve);
 
-  // 5. Типографика тире
+  // 6. Python dunder методы
+  s = s.replace(/(?<![\w])(__(?:init|str|repr|eq|len|getitem|enter|exit|call|iter|next|name|main|dict|slots)__)(?![\w])/g, wrapAndPreserve);
+
+  // 7. Встроенные вызовы функций Python
+  s = s.replace(/(?<![\w])((?:range|len|isinstance|issubclass|enumerate|zip|sorted|print|type|id|repr|super)\(\))(?![\w])/g, wrapAndPreserve);
+
+  // 8. Литералы и ключевые параметры Python
+  s = s.replace(/(?<![\w])(\*args|\*\*kwargs|\bNone\b|\bTrue\b|\bFalse\b|\bself\b|\bcls\b)(?![\w])/g, wrapAndPreserve);
+
+  // 9. Команды терминала Python/DevOps
+  s = s.replace(/(?<![\w])(python\s+(?:-m\s+)?[a-zA-Z0-9_.-]+|pip\s+install(?:\s+-[a-zA-Z0-9_-]+|\s+[a-zA-Z0-9_.-]+)+|pytest|docker\s+(?:run|build|ps|stop|exec)|docker-compose(?:\s+[a-zA-Z0-9_-]+)*)(?![\w])/g, wrapAndPreserve);
+
+  // 10. Типографика тире: дефисы между словами заменяем на длинное тире
   s = s.replace(/\s+[-–]\s+/g, ' — ');
 
-  // 6. Восстанавливаем все защищенные блоки кода
+  // 11. Восстанавливаем все защищенные блоки кода
   s = s.replace(/__CODE_(\d+)__/g, (_m, idx) => `\`${preservedCode[Number(idx)]}\``);
 
   return s.trim();
@@ -349,6 +444,69 @@ assert(cleanProseText('Команда git commit --amend.') === 'Команда 
 assert(cleanProseText('Команда git reset --hard HEAD~1.') === 'Команда `git reset --hard HEAD~1`.', 'Команда git reset --hard');
 assert(cleanProseText('История git log --oneline --graph.') === 'История `git log --oneline --graph`.', 'Команда git log --oneline --graph');
 assert(cleanProseText('Разница git diff HEAD.') === 'Разница `git diff HEAD`.', 'Команда git diff HEAD');
+
+console.log('\n--- 11. ТЕСТИРОВАНИЕ PARSE_MARKDOWN_TO_RICHTEXT ---');
+const emptyTokens = parseMarkdownToRichText('');
+assert(emptyTokens.length === 1 && emptyTokens[0].text === '', 'Пустая строка -> пустой текстовый токен');
+
+const plainTokens = parseMarkdownToRichText('Простой русский текст.');
+assert(plainTokens.length === 1 && plainTokens[0].text === 'Простой русский текст.' && !plainTokens[0].q, 'Простой текст без форматирования');
+
+const codeTokens = parseMarkdownToRichText('Команда `git status` показывает статус.');
+assert(codeTokens.length === 3, 'Инлайн-код разбит на 3 токена');
+assert(codeTokens[0].text === 'Команда ', 'Первый токен — префикс');
+assert(codeTokens[1].text === 'git status' && codeTokens[1].q === true, 'Второй токен — нативный инлайн-код (q: true)');
+assert(codeTokens[2].text === ' показывает статус.', 'Третий токен — суффикс');
+
+const latexTokens = parseMarkdownToRichText('Асимптотика $O(1)$ и $O(n)$.');
+assert(latexTokens.length === 5, 'LaTeX формулы разбиты на токены (с точкой в конце)');
+assert(latexTokens[1].i === 'x' && latexTokens[1].text === 'O(1)', 'Токен 1 — нативный KaTeX { i: "x", text: "O(1)" }');
+assert(latexTokens[3].i === 'x' && latexTokens[3].text === 'O(n)', 'Токен 3 — нативный KaTeX { i: "x", text: "O(n)" }');
+
+const boldTokens = parseMarkdownToRichText('Это **очень важно** для понимания.');
+assert(boldTokens.length === 3, 'Жирный текст разбит на 3 токена');
+assert(boldTokens[1].b === true && boldTokens[1].text === 'очень важно', 'Токен 1 — жирный (b: true)');
+
+console.log('\n--- 12. ТЕСТИРОВАНИЕ RICHTEXT_TO_MARKDOWN И ROUNDTRIP ---');
+const sampleRichText = [
+  { i: 'm', text: 'Сложность ' },
+  { i: 'x', text: 'O(1)' },
+  { i: 'm', text: ', а команда ' },
+  { i: 'm', text: 'git switch -c new-branch', q: true },
+  { i: 'm', text: ' — это ' },
+  { i: 'm', text: 'важно', b: true },
+  { i: 'm', text: '.' }
+];
+const serializedMd = richTextToMarkdown(sampleRichText);
+assert(serializedMd === 'Сложность $O(1)$, а команда `git switch -c new-branch` — это **важно**.', 'Сериализация RichText в Markdown');
+
+const reParsed = parseMarkdownToRichText(serializedMd);
+const reSerialized = richTextToMarkdown(reParsed);
+assert(serializedMd === reSerialized, 'Roundtrip: richText -> markdown -> parse -> markdown идентичен');
+
+console.log('\n--- 13. ТЕСТИРОВАНИЕ PYTHON И ДРУГИХ ПАТТЕРНОВ В CLEAN_PROSE_TEXT ---');
+assert(cleanProseText('Метод __init__ создает объект.') === 'Метод `__init__` создает объект.', 'Dunder __init__');
+assert(cleanProseText('Методы __str__ и __repr__ для строк.') === 'Методы `__str__` и `__repr__` для строк.', 'Dunder __str__ и __repr__');
+assert(cleanProseText('Функция len() возвращает размер.') === 'Функция `len()` возвращает размер.', 'Функция len()');
+assert(cleanProseText('Итератор range() генерирует числа.') === 'Итератор `range()` генерирует числа.', 'Функция range()');
+assert(cleanProseText('Переменная None и флаг True.') === 'Переменная `None` и флаг `True`.', 'Литералы None и True');
+assert(cleanProseText('Параметры *args и **kwargs в функции.') === 'Параметры `*args` и `**kwargs` в функции.', 'Параметры *args и **kwargs');
+assert(cleanProseText('Команда git cherry-pick abc1234.') === 'Команда `git cherry-pick abc1234`.', 'Команда git cherry-pick');
+assert(cleanProseText('Индекс git diff --staged.') === 'Индекс `git diff --staged`.', 'Флаг --staged');
+assert(cleanProseText('Флаг -b создает новую ветку.') === 'Флаг `-b` создает новую ветку.', 'Изолированный флаг -b');
+assert(cleanProseText('Вся команда git checkout -b feature.') === 'Вся команда `git checkout -b feature`.', 'Команда с флагом целиком');
+assert(cleanProseText('Запуск pytest в терминале.') === 'Запуск `pytest` в терминале.', 'Команда pytest');
+assert(cleanProseText('Установка pip install requests в venv.') === 'Установка `pip install requests` в venv.', 'Команда pip install');
+
+console.log('\n--- 14. ТЕСТИРОВАНИЕ ПОЛНОГО ПАЙПЛАЙНА (FULL PIPELINE INTEGRITY) ---');
+const rawDirtyNote = 'Сложность O(1). Выполните git checkout -b dev и проверьте .git/HEAD. Метод __init__ обязателен.';
+const cleanedProse = cleanProseText(rawDirtyNote);
+const nativeRichText = parseMarkdownToRichText(cleanedProse);
+
+assert(nativeRichText.some(t => t.i === 'x' && t.text === 'O(1)'), 'Пайплайн создал нативный KaTeX токен');
+assert(nativeRichText.some(t => t.q === true && t.text === 'git checkout -b dev'), 'Пайплайн создал нативный inline-code токен');
+assert(nativeRichText.some(t => t.q === true && t.text === '.git/HEAD'), 'Пайплайн распознал системный путь .git/HEAD');
+assert(nativeRichText.some(t => t.q === true && t.text === '__init__'), 'Пайплайн распознал dunder метод __init__');
 
 console.log(`\n==========================================`);
 console.log(`ИТОГО: Успешно: ${totalPassed} | Ошибок: ${totalFailed}`);
