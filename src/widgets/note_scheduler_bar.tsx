@@ -14,8 +14,8 @@ export const NoteSchedulerBar = () => {
   const data = useTrackerPlugin(async () => {
     try {
       const widgetCtx = await plugin.widget.getWidgetContext<WidgetLocation.DocumentBelowTitle>();
-      const remId = widgetCtx?.remId;
-      const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
+      const docId = widgetCtx?.documentId;
+      const rem = docId ? await plugin.rem.findOne(docId) : await plugin.focus.getFocusedRem();
       if (!rem) return null;
       const isDoc = await rem.isDocument();
       const isPaused = await rem.hasPowerup(BuiltInPowerupCodes.DisableCards);

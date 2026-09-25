@@ -76,62 +76,6 @@ async function pauseNoteRepetition(plugin: ReactRNPlugin, rem: PluginRem) {
 }
 
 // ============================================================
-// Часть 2: Обновление описаний и формулировок карточек (Claude)
-// ============================================================
-
-const API_KEY_SETTING = 'anthropic-api-key';
-const MODEL_SETTING = 'anthropic-model';
-const BATCH_SIZE = 12;
-
-type CardPair = { PluginRem: PluginRem; front: string; back: string };
-
-function buildPrompt(pairs: { front: string; back: string }[]): string {
-  return [
-    'Ты помогаешь готовить флеш-карточки для джуна, который готовится стать',
-    'Junior+ Python Backend Developer. Ниже даны пары «вопрос-ответ».',
-    'Переформулируй каждую пару так, чтобы формулировка была технически',
-    'точной и однозначной, но при этом понятной новичку: без двусмысленностей,',
-    'без лишней воды, без усложнения там, где можно сказать проще.',
-    'Не меняй смысл и не добавляй факты, которых не было в исходнике.',
-    '',
-    'Верни ТОЛЬКО валидный JSON-массив вида',
-    '[{"i": 0, "front": "...", "back": "..."}, ...]',
-    'без markdown-обёртки и без пояснений.',
-    '',
-    'Карточки:',
-    JSON.stringify(pairs.map((p, i) => ({ i, front: p.front, back: p.back }))),
-  ].join('\n');
-}
-
-async function callClaude(
-  apiKey: string,
-  model: string,
-  pairs: { front: string; back: string }[]
-): Promise<{ i: number; front: string; back: string }[]> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: buildPrompt(pairs) }],
-    }),
-  });
-  if (!res.ok) {
-    throw new Error(`Claude API вернул ${res.status}: ${await res.text()}`);
-  }
-  const data = await res.json();
-  const raw: string = data.content?.[0]?.text ?? '[]';
-  const cleaned = raw.replace(/^```json\s*|```$/g, '').trim();
-  return JSON.parse(cleaned);
-}
-
-// ============================================================
 // Точка входа плагина
 // ============================================================
 
@@ -212,21 +156,7 @@ async function onActivate(plugin: ReactRNPlugin) {
     });
   } catch (_) {}
 
-  // 5. Настройки Claude AI
-  await plugin.settings.registerStringSetting({
-    id: API_KEY_SETTING,
-    title: 'Anthropic API key (для ИИ Claude)',
-    description:
-      'Требуется ТОЛЬКО для функции обновления описаний карточек через Claude AI. Доступ к API Claude платный (тарифицируется по токенам на console.anthropic.com). Для работы самого планировщика повторений ключ НЕ нужен.',
-  });
-  await plugin.settings.registerStringSetting({
-    id: MODEL_SETTING,
-    title: 'Модель Claude',
-    defaultValue: 'claude-sonnet-5',
-    description: 'См. актуальный список моделей на docs.claude.com',
-  });
-
-  // 6. Команда: Выровнять нумерацию конспектов (01, 02, 03...) без изменения структуры папок
+  // 5. Команда: Выровнять нумерацию конспектов (01, 02, 03...) без изменения структуры папок
   async function renumberNotes(plugin: ReactRNPlugin, rootRem?: PluginRem) {
     const target = rootRem || (await plugin.focus.getFocusedRem());
     if (!target) {
@@ -422,74 +352,6 @@ async function onActivate(plugin: ReactRNPlugin) {
     });
   } catch (_) {}
 
-  // 8. Команда Claude AI
-
-  await plugin.app.registerCommand({
-    id: 'smart-edit-cards',
-    name: 'Обновить описания карточек в этой папке (Claude)',
-    action: async () => {
-      const apiKey = await plugin.settings.getSetting<string>(API_KEY_SETTING);
-      const model = (await plugin.settings.getSetting<string>(MODEL_SETTING)) || 'claude-sonnet-5';
-
-      if (!apiKey) {
-        await plugin.app.toast('Сначала укажите Anthropic API key в настройках плагина');
-        return;
-      }
-      const root = await plugin.focus.getFocusedRem();
-      if (!root) {
-        await plugin.app.toast('Откройте папку с карточками и повторите команду');
-        return;
-      }
-
-      const raw: PluginRem[] = [];
-      await (async function collect(r: PluginRem) {
-        if (r.backText && r.backText.length > 0) raw.push(r);
-        for (const child of await r.getChildrenRem()) await collect(child);
-      })(root);
-
-      if (raw.length === 0) {
-        await plugin.app.toast('В этой папке не нашлось карточек (front/back)');
-        return;
-      }
-
-      const cards: CardPair[] = [];
-      for (const r of raw) {
-        cards.push({
-          PluginRem: r,
-          front: await plugin.richText.toString(r.text || []),
-          back: await plugin.richText.toString(r.backText || []),
-        });
-      }
-
-      let done = 0;
-      for (let start = 0; start < cards.length; start += BATCH_SIZE) {
-        const batch = cards.slice(start, start + BATCH_SIZE);
-        await plugin.app.toast(
-          `Обрабатываю карточки ${start + 1}–${Math.min(start + BATCH_SIZE, cards.length)} из ${cards.length}…`
-        );
-        try {
-          const rewritten = await callClaude(
-            apiKey,
-            model,
-            batch.map((c) => ({ front: c.front, back: c.back }))
-          );
-          for (const item of rewritten) {
-            const card = batch[item.i];
-            if (!card) continue;
-            await card.PluginRem.setText(await plugin.richText.text(item.front).value());
-            await card.PluginRem.setBackText(await plugin.richText.text(item.back).value());
-            done++;
-          }
-        } catch (e) {
-          console.error('smart-edit-cards batch failed', e);
-          await plugin.app.toast(`Ошибка на батче ${start + 1}: ${String(e)}`);
-        }
-        await new Promise((r) => setTimeout(r, 500));
-      }
-
-      await plugin.app.toast(`Готово: обновлено описаний карточек — ${done} из ${cards.length}`);
-    },
-  });
 }
 
 async function onDeactivate(_plugin: ReactRNPlugin) {}
