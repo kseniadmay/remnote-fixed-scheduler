@@ -540,12 +540,99 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
   }
 
+  // 9. Выпрямление и очистка иерархии конспекта (устранение лесенки вложенности и пустых буллетов)
+  async function flattenAndCleanNoteHierarchy(plugin: ReactRNPlugin, rootRem?: PluginRem) {
+    const target = rootRem || (await plugin.focus.getFocusedRem());
+    if (!target) {
+      await plugin.app.toast('Откройте конспект и повторите команду');
+      return;
+    }
+
+    let unnestedCount = 0;
+
+    // Рекурсивный проход для устранения мусорных обёрток и лишней вложенности
+    async function normalizeTree(currentParent: PluginRem) {
+      const children = await currentParent.getChildrenRem();
+      if (!children || children.length === 0) return;
+
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        const rawText = (await plugin.richText.toString(child.text || [])).trim();
+        const isDivider = await child.hasPowerup(BuiltInPowerupCodes.Divider);
+
+        // 1. Проверяем, является ли узел мусорной обёрткой (например ".", "# .", "#", "•")
+        const isDummyWrapper = !isDivider && (rawText === '.' || rawText === '# .' || rawText === '#' || rawText === '•');
+
+        if (isDummyWrapper) {
+          // Вытаскиваем всех детей мусорного узла на уровень currentParent
+          const grandChildren = await child.getChildrenRem();
+          for (const gc of grandChildren) {
+            await gc.setParent(currentParent);
+            unnestedCount++;
+          }
+          // Очищаем мусорный узел
+          await child.setText(await plugin.richText.text('').value());
+          try {
+            await child.remove();
+          } catch (_) {}
+          continue;
+        }
+
+        // 2. Блок кода НЕ ДОЛЖЕН иметь дочерних узлов (вложенности)!
+        // Все абзацы и подпункты, случайно затянутые внутрь кода, вытаскиваем наружу
+        const isCode = (await child.hasPowerup(BuiltInPowerupCodes.Code)) || (await child.isCode()) || rawText.startsWith('```');
+        if (isCode) {
+          const codeChildren = await child.getChildrenRem();
+          if (codeChildren.length > 0) {
+            for (const cc of codeChildren) {
+              await cc.setParent(currentParent);
+              unnestedCount++;
+            }
+          }
+        }
+
+        // 3. Заголовки разделов (## или ###) должны быть на верхнем уровне (в корне документа target)
+        if (rawText.startsWith('## ') || rawText.startsWith('### ')) {
+          if (target && currentParent?._id !== target._id) {
+            await child.setParent(target);
+            unnestedCount++;
+            const cleanTitle = rawText.replace(/^#{2,3}\s*/, '');
+            await child.setText(await plugin.richText.text(cleanTitle).value());
+            await child.setFontSize('H2');
+          }
+        }
+
+        // Рекурсивная обработка вложенных узлов
+        await normalizeTree(child);
+      }
+    }
+
+    try {
+      // 3 прохода для распутывания глубоких многоуровневых цепочек
+      for (let pass = 0; pass < 3; pass++) {
+        await normalizeTree(target);
+      }
+      await plugin.app.toast(`🧹 Иерархия выпрямлена! Перемещено узлов на правильный уровень: ${unnestedCount}`);
+    } catch (e) {
+      console.error('flattenAndCleanNoteHierarchy failed:', e);
+      await plugin.app.toast(`Ошибка при выпрямлении иерархии: ${String(e)}`);
+    }
+  }
+
   // Регистрация команд палитры (Ctrl+K)
   await plugin.app.registerCommand({
     id: 'format-unit-headers',
     name: '🎨 Оформить заголовки юнитов и добавить эмодзи',
     action: async () => {
       await formatUnitHeaders(plugin);
+    },
+  });
+
+  await plugin.app.registerCommand({
+    id: 'flatten-note-hierarchy',
+    name: '🧹 Выпрямить иерархию конспекта (убрать лесенку вложенности и пустые буллеты)',
+    action: async () => {
+      await flattenAndCleanNoteHierarchy(plugin);
     },
   });
 
@@ -567,8 +654,9 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   await plugin.app.registerCommand({
     id: 'format-full-note',
-    name: '✨ Полное оформление конспекта (разделители + код без bullet)',
+    name: '✨ Полное оформление конспекта (выпрямление лесенки + разделители + код без bullet)',
     action: async () => {
+      await flattenAndCleanNoteHierarchy(plugin);
       await formatCodeBlocks(plugin);
       await formatNoteLayout(plugin);
     },
@@ -588,20 +676,31 @@ async function onActivate(plugin: ReactRNPlugin) {
     });
 
     await plugin.app.registerMenuItem({
+      id: 'menu-flatten-note',
+      name: '🧹 Выпрямить иерархию (убрать лесенку вложенности)',
+      location: PluginCommandMenuLocation.DocumentMenu,
+      action: async (args: any) => {
+        const remId = args?.remId;
+        const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
+        if (rem) await flattenAndCleanNoteHierarchy(plugin, rem);
+      },
+    });
+
+    await plugin.app.registerMenuItem({
       id: 'menu-format-full-note',
-      name: '✨ Оформить конспект (разделители + код без bullet)',
+      name: '✨ Оформить конспект (выпрямление + разделители + код)',
       location: PluginCommandMenuLocation.DocumentMenu,
       action: async (args: any) => {
         const remId = args?.remId;
         const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
         if (rem) {
+          await flattenAndCleanNoteHierarchy(plugin, rem);
           await formatCodeBlocks(plugin, rem);
           await formatNoteLayout(plugin, rem);
         }
       },
     });
   } catch (_) {}
-
 }
 
 async function onDeactivate(_plugin: ReactRNPlugin) {}
