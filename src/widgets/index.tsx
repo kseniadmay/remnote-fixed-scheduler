@@ -595,6 +595,177 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
   }
 
+  // ------------------------------------------------------------
+  // Вспомогательные функции форматирования и классификации узлов
+  // ------------------------------------------------------------
+
+  function cleanHeadingTitle(raw: string): string {
+    let s = raw.trim();
+    s = s.replace(/^[#\s]+/, '');
+    while (s.startsWith('##') || s.startsWith('#')) {
+      s = s.replace(/^[#\s]+/, '');
+    }
+    // Удаляем любые эмодзи в начале заголовка (строгий академический стиль)
+    s = s.replace(/^[\p{Emoji}\u200d\ufe0f\s]+/u, '');
+    s = s.replace(/^[^\w\sа-яА-ЯёЁa-zA-Z0-9]+\s*/, '');
+    return s.trim();
+  }
+
+  function isAsciiDiagram(text: string): boolean {
+    if (!text) return false;
+    if (/---|\/|\\|-->|==>|<-|<--/.test(text)) return true;
+    if (/\((main|master|feature|origin|head|dev|staging|auth|bugfix)[^)]*\)/i.test(text)) return true;
+    if (text.startsWith('|') || text.startsWith('+--') || text.startsWith('+==')) return true;
+    if (text.includes('удаляются сборщиком мусора') || text.includes('garbage collect')) return true;
+    return false;
+  }
+
+  function checkIsHeading(rawText: string, cleanTitle: string, fontSize: 'H1' | 'H2' | 'H3' | undefined, isCard: boolean): boolean {
+    if (isCard) return false;
+    if (!cleanTitle || cleanTitle.length < 3) return false;
+    // Настоящие заголовки разделов в конспектах компактны (не длиннее 65 символов)
+    if (cleanTitle.length > 65) return false;
+
+    // Заголовки разделов в русском языке никогда не заканчиваются точкой
+    if (cleanTitle.endsWith('.')) return false;
+
+    // Заголовок не должен содержать несколько предложений (например: "Текст. Еще текст.")
+    if (/[.!?]\s+[А-ЯA-Z]/.test(cleanTitle)) return false;
+
+    // Количество слов в заголовке раздела обычно не более 8
+    const words = cleanTitle.split(/\s+/).filter(w => w.length > 0);
+    if (words.length > 8) return false;
+
+    // Проверяем: начинается ли с # или имел реальный H2
+    const startsWithHash = /^#{1,3}\s+/.test(rawText) || rawText.startsWith('##') || rawText.startsWith('###');
+    if (startsWithHash) {
+      return true;
+    }
+
+    if (fontSize === 'H2') {
+      return true;
+    }
+
+    return false;
+  }
+
+  function cleanProseText(text: string): string {
+    let s = text
+      .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
+      .replace(/\n?```$/, '')
+      .trim();
+
+    // Срезаем любые ложные решётки заголовков в начале абзаца
+    s = s.replace(/^[#\s]+/, '').trim();
+
+    // 1. Оборачиваем асимптотику и математические формулы Big-O в LaTeX: $O(...)$
+    s = s.replace(/(?<![\$`\w])O\(([^)]+)\)(?![\$`\w])/g, (_match, inner) => {
+      let formula = inner.trim();
+      formula = formula.replace(/\blog\b/g, '\\log');
+      formula = formula.replace(/\s*\+\s*/g, ' + ');
+      return `$O(${formula})$`;
+    });
+
+    const preservedCode: string[] = [];
+    // Защищаем уже существующие инлайн-блоки кода от повторной обработки
+    s = s.replace(/`([^`]+)`/g, (_m, code) => {
+      preservedCode.push(code);
+      return `__CODE_${preservedCode.length - 1}__`;
+    });
+
+    // Вспомогательная функция оборачивания кода с выносом знаков препинания наружу
+    function wrapAndPreserve(matched: string) {
+      let code = matched.trim();
+      let trailingPunct = '';
+      const punctMatch = code.match(/([.,:;!?]+)$/);
+      if (punctMatch) {
+        trailingPunct = punctMatch[1];
+        code = code.slice(0, -trailingPunct.length).trim();
+      }
+      preservedCode.push(code);
+      return `__CODE_${preservedCode.length - 1}__${trailingPunct}`;
+    }
+
+    // 2. Оборачиваем CLI команды Git
+    s = s.replace(/(?<![\w])(git\s+(?:checkout|switch|merge|rebase|branch|commit|status|push|pull|add|reset|log|diff|clone|remote|stash|tag|init)(?:\s+-[a-zA-Z0-9_-]+|\s+--[a-zA-Z0-9_-]+|\s+<[^>]+>|\s+[a-zA-Z0-9_./-]+)*)(?![\w])/g, wrapAndPreserve);
+
+    // 3. Отдельные флаги CLI: --abort, --continue, --skip, --hard, --soft, --mixed, --oneline, --graph, -b, -m, -d, -D
+    s = s.replace(/(?<![\w])(--(?:abort|continue|skip|hard|soft|mixed|oneline|graph|amend|no-ff|squash|all))(?![\w])/g, wrapAndPreserve);
+
+    // 4. Системные пути и refs: .git/HEAD, .git/refs/heads/, refs/heads/, .gitignore
+    s = s.replace(/(?<![\w])(\.git(?:\/[a-zA-Z0-9_.-]+)*)(?![\w])/g, wrapAndPreserve);
+    s = s.replace(/(?<![\w])(refs\/heads(?:\/[a-zA-Z0-9_.-]+)*)(?![\w])/g, wrapAndPreserve);
+
+    // 5. Типографика тире: дефисы между словами заменяем на длинное тире
+    s = s.replace(/\s+[-–]\s+/g, ' — ');
+
+    // 6. Восстанавливаем все защищенные блоки кода
+    s = s.replace(/__CODE_(\d+)__/g, (_m, idx) => `\`${preservedCode[Number(idx)]}\``);
+
+    return s.trim();
+  }
+
+  function isShortCommandSnippet(text: string): boolean {
+    const clean = text
+      .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
+      .replace(/\n?```$/, '')
+      .replace(/^[#\s]+/, '')
+      .trim();
+    const lines = clean.split('\n').filter(l => l.trim().length > 0);
+    if (lines.length <= 2 && !isAsciiDiagram(clean)) {
+      return true;
+    }
+    return false;
+  }
+
+  function formatShortCommandAsProse(raw: string): string {
+    const clean = raw
+      .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
+      .replace(/\n?```$/, '')
+      .replace(/^[#\s]+/, '')
+      .trim();
+    const lines = clean.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    return lines.map(line => {
+      let l = line.replace(/^\$\s*/, '');
+      const hashIdx = l.indexOf('#');
+      if (hashIdx > 0) {
+        const cmd = l.slice(0, hashIdx).trim();
+        const comment = l.slice(hashIdx + 1).trim();
+        return `\`${cmd}\` — ${comment}`;
+      } else {
+        return `\`${l}\``;
+      }
+    }).join('\n');
+  }
+
+  function isCodeSnippet(text: string): boolean {
+    if (!text) return false;
+    if (text.startsWith('```')) return true;
+    const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
+    if (russianWords.length >= 4) {
+      return false;
+    }
+    return (
+      text.startsWith('# Старый') ||
+      text.startsWith('# Новый') ||
+      text.startsWith('#') ||
+      text.startsWith('git ') ||
+      text.startsWith('def ') ||
+      text.startsWith('class ') ||
+      text.startsWith('import ') ||
+      text.startsWith('from ') ||
+      text.startsWith('async def ') ||
+      text.startsWith('pip install') ||
+      text.startsWith('docker ') ||
+      text.startsWith('docker-compose') ||
+      text.startsWith('$ ') ||
+      text.startsWith('kubectl ') ||
+      text.startsWith('python ') ||
+      text.startsWith('npm ') ||
+      isAsciiDiagram(text)
+    ) && !text.includes('::') && !text.includes('?');
+  }
+
   // 9. Выпрямление и очистка иерархии конспекта (устранение лесенки вложенности и пустых буллетов)
   async function flattenAndCleanNoteHierarchy(plugin: ReactRNPlugin, rootRem?: PluginRem) {
     const target = rootRem || (await plugin.focus.getFocusedRem());
@@ -646,14 +817,24 @@ async function onActivate(plugin: ReactRNPlugin) {
           }
         }
 
-        // 3. Заголовки разделов (## или ###) должны быть на верхнем уровне (в корне документа target)
+        // 3. Заголовки разделов (## или ###)
         if (rawText.startsWith('## ') || rawText.startsWith('### ')) {
-          if (target && currentParent?._id !== target._id) {
-            await child.setParent(target);
-            unnestedCount++;
-            const cleanTitle = rawText.replace(/^#{2,3}\s*/, '');
-            await child.setText(await plugin.richText.text(cleanTitle).value());
+          const cleanTitle = cleanHeadingTitle(rawText);
+          const isRealH = checkIsHeading(rawText, cleanTitle, undefined, false) && !isCodeSnippet(rawText);
+
+          if (isRealH) {
+            if (target && currentParent?._id !== target._id) {
+              await child.setParent(target);
+              unnestedCount++;
+            }
+            await child.setText(await plugin.richText.text(`## ${cleanTitle}`).value());
             await child.setFontSize('H2');
+          } else {
+            // Ошибочно проставленный префикс ## у обычного абзаца — восстанавливаем нормальную прозу
+            const fixedText = cleanProseText(rawText);
+            await child.setText(await plugin.richText.text(fixedText).value());
+            await child.setFontSize(undefined);
+            try { await child.removePowerup(BuiltInPowerupCodes.Header); } catch (_) {}
           }
         }
 
@@ -685,153 +866,6 @@ async function onActivate(plugin: ReactRNPlugin) {
     const expectedCardFront = `📖 Перечитать конспект ${docTitle}`;
     const expectedCardBack = `Конспект перечитан и усвоен. Оцените, насколько хорошо помните материал.`;
     const expectedCardFullText = `${expectedCardFront}→${expectedCardBack}`;
-
-    function cleanHeadingTitle(raw: string): string {
-      let s = raw.trim();
-      s = s.replace(/^[#\s]+/, '');
-      while (s.startsWith('##') || s.startsWith('#')) {
-        s = s.replace(/^[#\s]+/, '');
-      }
-      // Удаляем любые эмодзи в начале заголовка (строгий академический стиль)
-      s = s.replace(/^[\p{Emoji}\u200d\ufe0f\s]+/u, '');
-      s = s.replace(/^[^\w\sа-яА-ЯёЁa-zA-Z0-9]+\s*/, '');
-      return s.trim();
-    }
-
-    function isAsciiDiagram(text: string): boolean {
-      if (!text) return false;
-      if (/---|\/|\\|-->|==>|<-|<--/.test(text)) return true;
-      if (/\((main|master|feature|origin|head|dev|staging|auth|bugfix)[^)]*\)/i.test(text)) return true;
-      if (text.startsWith('|') || text.startsWith('+--') || text.startsWith('+==')) return true;
-      if (text.includes('удаляются сборщиком мусора') || text.includes('garbage collect')) return true;
-      return false;
-    }
-
-    function checkIsHeading(rawText: string, cleanTitle: string, fontSize: 'H1' | 'H2' | 'H3' | undefined, isCard: boolean): boolean {
-      if (isCard) return false;
-      if (!cleanTitle || cleanTitle.length < 3) return false;
-      // Настоящие заголовки разделов в конспектах компактны (не длиннее 65 символов)
-      if (cleanTitle.length > 65) return false;
-
-      // Заголовки разделов в русском языке никогда не заканчиваются точкой
-      if (cleanTitle.endsWith('.')) return false;
-
-      // Заголовок не должен содержать несколько предложений (например: "Текст. Еще текст.")
-      if (/[.!?]\s+[А-ЯA-Z]/.test(cleanTitle)) return false;
-
-      // Количество слов в заголовке раздела обычно не более 8
-      const words = cleanTitle.split(/\s+/).filter(w => w.length > 0);
-      if (words.length > 8) return false;
-
-      // Проверяем: начинается ли с # или имел реальный H2
-      const startsWithHash = /^#{1,3}\s+/.test(rawText) || rawText.startsWith('##') || rawText.startsWith('###');
-      if (startsWithHash) {
-        return true;
-      }
-
-      if (fontSize === 'H2') {
-        return true;
-      }
-
-      return false;
-    }
-
-    function cleanProseText(text: string): string {
-      let s = text
-        .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
-        .replace(/\n?```$/, '')
-        .trim();
-
-      // Срезаем любые ложные решётки заголовков в начале абзаца
-      s = s.replace(/^[#\s]+/, '').trim();
-
-      // 1. Оборачиваем асимптотику и математические формулы Big-O в LaTeX: $O(...)$
-      s = s.replace(/(?<![\$`\w])O\(([^)]+)\)(?![\$`\w])/g, (_match, inner) => {
-        let formula = inner.trim();
-        formula = formula.replace(/\blog\b/g, '\\log');
-        formula = formula.replace(/\s*\+\s*/g, ' + ');
-        return `$O(${formula})$`;
-      });
-
-      // 2. Оборачиваем CLI команды Git
-      s = s.replace(/(?<![`\w])(git\s+(?:checkout|switch|merge|rebase|branch|commit|status|push|pull|add|reset|log|diff|clone|remote|stash|tag|init)(?:\s+-[a-zA-Z0-9_-]+|\s+--[a-zA-Z0-9_-]+|\s+<[^>]+>|\s+[a-zA-Z0-9_./-]+)*)(?![`\w])/g, '`$1`');
-
-      // 3. Отдельные флаги CLI: --abort, --continue, --skip, --hard, --soft, --mixed, --oneline, --graph, -b, -m, -d, -D
-      s = s.replace(/(?<![`\w])(--(?:abort|continue|skip|hard|soft|mixed|oneline|graph|amend|no-ff|squash|all))(?![`\w])/g, '`$1`');
-
-      // 4. Системные пути и refs: .git/HEAD, .git/refs/heads/, refs/heads/, .gitignore
-      s = s.replace(/(?<![`\w])(\.git(?:\/[a-zA-Z0-9_.-]+)*)(?![`\w])/g, '`$1`');
-      s = s.replace(/(?<![`\w])(refs\/heads(?:\/[a-zA-Z0-9_.-]+)*)(?![`\w])/g, '`$1`');
-
-      // 5. Типографика тире: дефисы между словами заменяем на длинное тире
-      s = s.replace(/\s+[-–]\s+/g, ' — ');
-
-      // 6. Устраняем случайные дубликаты обратных кавычек
-      s = s.replace(/`{2,}/g, '`');
-
-      return s.trim();
-    }
-
-    function isShortCommandSnippet(text: string): boolean {
-      const clean = text
-        .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
-        .replace(/\n?```$/, '')
-        .replace(/^[#\s]+/, '')
-        .trim();
-      const lines = clean.split('\n').filter(l => l.trim().length > 0);
-      if (lines.length <= 2 && !isAsciiDiagram(clean)) {
-        return true;
-      }
-      return false;
-    }
-
-    function formatShortCommandAsProse(raw: string): string {
-      const clean = raw
-        .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
-        .replace(/\n?```$/, '')
-        .replace(/^[#\s]+/, '')
-        .trim();
-      const lines = clean.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-      return lines.map(line => {
-        let l = line.replace(/^\$\s*/, '');
-        const hashIdx = l.indexOf('#');
-        if (hashIdx > 0) {
-          const cmd = l.slice(0, hashIdx).trim();
-          const comment = l.slice(hashIdx + 1).trim();
-          return `\`${cmd}\` — ${comment}`;
-        } else {
-          return `\`${l}\``;
-        }
-      }).join('\n');
-    }
-
-    function isCodeSnippet(text: string): boolean {
-      if (!text) return false;
-      if (text.startsWith('```')) return true;
-      const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
-      if (russianWords.length >= 4) {
-        return false;
-      }
-      return (
-        text.startsWith('# Старый') ||
-        text.startsWith('# Новый') ||
-        text.startsWith('#') ||
-        text.startsWith('git ') ||
-        text.startsWith('def ') ||
-        text.startsWith('class ') ||
-        text.startsWith('import ') ||
-        text.startsWith('from ') ||
-        text.startsWith('async def ') ||
-        text.startsWith('pip install') ||
-        text.startsWith('docker ') ||
-        text.startsWith('docker-compose') ||
-        text.startsWith('$ ') ||
-        text.startsWith('kubectl ') ||
-        text.startsWith('python ') ||
-        text.startsWith('npm ') ||
-        isAsciiDiagram(text)
-      ) && !text.includes('::') && !text.includes('?');
-    }
 
     type RemEntry = {
       rem: PluginRem;

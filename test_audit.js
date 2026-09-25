@@ -62,21 +62,41 @@ function cleanProseText(text) {
     return `$O(${formula})$`;
   });
 
+  const preservedCode = [];
+  // Защищаем уже существующие инлайн-блоки кода от повторной обработки
+  s = s.replace(/`([^`]+)`/g, (_m, code) => {
+    preservedCode.push(code);
+    return `__CODE_${preservedCode.length - 1}__`;
+  });
+
+  // Вспомогательная функция оборачивания кода с выносом знаков препинания наружу
+  function wrapAndPreserve(matched) {
+    let code = matched.trim();
+    let trailingPunct = '';
+    const punctMatch = code.match(/([.,:;!?]+)$/);
+    if (punctMatch) {
+      trailingPunct = punctMatch[1];
+      code = code.slice(0, -trailingPunct.length).trim();
+    }
+    preservedCode.push(code);
+    return `__CODE_${preservedCode.length - 1}__${trailingPunct}`;
+  }
+
   // 2. Оборачиваем CLI команды Git
-  s = s.replace(/(?<![`\w])(git\s+(?:checkout|switch|merge|rebase|branch|commit|status|push|pull|add|reset|log|diff|clone|remote|stash|tag|init)(?:\s+-[a-zA-Z0-9_-]+|\s+--[a-zA-Z0-9_-]+|\s+<[^>]+>|\s+[a-zA-Z0-9_./-]+)*)(?![`\w])/g, '`$1`');
+  s = s.replace(/(?<![\w])(git\s+(?:checkout|switch|merge|rebase|branch|commit|status|push|pull|add|reset|log|diff|clone|remote|stash|tag|init)(?:\s+-[a-zA-Z0-9_-]+|\s+--[a-zA-Z0-9_-]+|\s+<[^>]+>|\s+[a-zA-Z0-9_./-]+)*)(?![\w])/g, wrapAndPreserve);
 
   // 3. Отдельные флаги CLI
-  s = s.replace(/(?<![`\w])(--(?:abort|continue|skip|hard|soft|mixed|oneline|graph|amend|no-ff|squash|all))(?![`\w])/g, '`$1`');
+  s = s.replace(/(?<![\w])(--(?:abort|continue|skip|hard|soft|mixed|oneline|graph|amend|no-ff|squash|all))(?![\w])/g, wrapAndPreserve);
 
   // 4. Системные пути и refs
-  s = s.replace(/(?<![`\w])(\.git(?:\/[a-zA-Z0-9_.-]+)*)(?![`\w])/g, '`$1`');
-  s = s.replace(/(?<![`\w])(refs\/heads(?:\/[a-zA-Z0-9_.-]+)*)(?![`\w])/g, '`$1`');
+  s = s.replace(/(?<![\w])(\.git(?:\/[a-zA-Z0-9_.-]+)*)(?![\w])/g, wrapAndPreserve);
+  s = s.replace(/(?<![\w])(refs\/heads(?:\/[a-zA-Z0-9_.-]+)*)(?![\w])/g, wrapAndPreserve);
 
   // 5. Типографика тире
   s = s.replace(/\s+[-–]\s+/g, ' — ');
 
-  // 6. Устраняем случайные дубликаты обратных кавычек
-  s = s.replace(/`{2,}/g, '`');
+  // 6. Восстанавливаем все защищенные блоки кода
+  s = s.replace(/__CODE_(\d+)__/g, (_m, idx) => `\`${preservedCode[Number(idx)]}\``);
 
   return s.trim();
 }
@@ -261,6 +281,34 @@ assert(JSON.stringify(pass2) === JSON.stringify(pass3), 'Прогон 2 раве
 assert(pass1[0] === '## Что такое ветка на уровне Git', 'Заголовок 1 стабилен');
 assert(pass1[1] === 'Ветка в Git — это не папка. Это указатель за $O(1)$.', 'Проза 1 стабильна и содержит $O(1)$');
 assert(pass1[2] === '`git checkout <ветка>` — переключиться', 'Инлайн-команда стабильна');
+
+console.log('\n--- 6. ТЕСТИРОВАНИЕ ВЫПРЯМЛЕНИЯ ИЕРАРХИИ (flattenAndCleanNoteHierarchy) ---');
+function simulateFlattenNode(rawText) {
+  if (rawText.startsWith('## ') || rawText.startsWith('### ')) {
+    const cleanTitle = cleanHeadingTitle(rawText);
+    const isRealH = checkIsHeading(rawText, cleanTitle, undefined, false) && !isCodeSnippet(rawText);
+    if (isRealH) {
+      return { type: 'heading', text: `## ${cleanTitle}`, fontSize: 'H2' };
+    } else {
+      const fixedText = cleanProseText(rawText);
+      return { type: 'prose', text: fixedText, fontSize: undefined };
+    }
+  }
+  return { type: 'prose', text: cleanProseText(rawText), fontSize: undefined };
+}
+
+const node1 = simulateFlattenNode('## Что такое ветка на уровне Git');
+assert(node1.type === 'heading' && node1.fontSize === 'H2' && node1.text === '## Что такое ветка на уровне Git', 'Истинный заголовок получает H2');
+
+const node2 = simulateFlattenNode('## Ветка в Git – это не папка. Это указатель на коммит.');
+assert(node2.type === 'prose' && node2.fontSize === undefined && !node2.text.startsWith('#'), 'Ложный заголовок в иерархии сбрасывается в прозу без H2');
+
+console.log('\n--- 7. ТЕСТИРОВАНИЕ ГРАНИЧНЫХ СЛУЧАЕВ BIG-O И CLI ---');
+assert(cleanProseText('Сложность алгоритма O(n^2) и O(2^n).') === 'Сложность алгоритма $O(n^2)$ и $O(2^n)$.', 'Степенные сложности O(n^2) и O(2^n)');
+assert(cleanProseText('Факториал за O(n!).') === 'Факториал за $O(n!)$.', 'Факториальная сложность O(n!)');
+assert(cleanProseText('Команда git switch -c feature-test.') === 'Команда `git switch -c feature-test`.', 'Команда git switch -c');
+assert(cleanProseText('Слияние через git merge --no-ff dev.') === 'Слияние через `git merge --no-ff dev`.', 'Команда git merge --no-ff');
+assert(cleanProseText('Продолжение git rebase --continue.') === 'Продолжение `git rebase --continue`.', 'Команда git rebase --continue');
 
 console.log(`\n==========================================`);
 console.log(`ИТОГО: Успешно: ${totalPassed} | Ошибок: ${totalFailed}`);
