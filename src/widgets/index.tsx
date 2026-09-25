@@ -43,7 +43,47 @@ async function registerFixedScheduler(plugin: ReactRNPlugin) {
       days = FIXED_STEPS_DAYS[FIXED_STEPS_DAYS.length - 1] * Math.pow(2, extraSteps);
     }
 
-    return { nextDate: Date.now() + days * DAY_MS };
+    const nextDate = Date.now() + days * DAY_MS;
+
+    // Авто-разблокировка карточек конспекта в FSRS после 1-го прочтения
+    try {
+      if (args.remId) {
+        const cardRem = await plugin.rem.findOne(args.remId);
+        if (cardRem) {
+          let parentDoc: PluginRem | undefined = cardRem;
+          while (parentDoc && !(await parentDoc.isDocument())) {
+            parentDoc = (await parentDoc.getParentRem()) as PluginRem | undefined;
+          }
+
+          if (parentDoc) {
+            // Обновляем состояние планировщика конспекта
+            const newState = {
+              stage: Math.min(repsSoFar + 1, 6),
+              nextReviewDate: nextDate,
+              lastReviewDate: Date.now(),
+            };
+            await plugin.storage.setSynced(`note_sched_${parentDoc._id}`, newState);
+
+            // Если это 1-е ревью (или более) — разблокируем все детальные карточки конспекта для FSRS!
+            if (repsSoFar >= 1) {
+              if (await parentDoc.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+                await parentDoc.removePowerup(BuiltInPowerupCodes.DisableCards);
+              }
+              const descendants = (await parentDoc.getDescendants()) || [];
+              for (const child of descendants) {
+                if (child._id !== cardRem._id && (await child.hasPowerup(BuiltInPowerupCodes.DisableCards))) {
+                  await child.removePowerup(BuiltInPowerupCodes.DisableCards);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error auto-unlocking cards in SRSScheduleCard:', e);
+    }
+
+    return { nextDate };
   });
 }
 
@@ -55,8 +95,8 @@ async function activateNoteRepetition(plugin: ReactRNPlugin, rem: PluginRem) {
   }
 
   // 2. Снимаем паузу со всех дочерних карточек
-  const children = await rem.getChildrenRem();
-  for (const child of children) {
+  const descendants = (await rem.getDescendants()) || [];
+  for (const child of descendants) {
     if (await child.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
       await child.removePowerup(BuiltInPowerupCodes.DisableCards);
     }
@@ -71,8 +111,12 @@ async function activateNoteRepetition(plugin: ReactRNPlugin, rem: PluginRem) {
 // Вспомогательная функция: приостановить повторение конспекта
 async function pauseNoteRepetition(plugin: ReactRNPlugin, rem: PluginRem) {
   await rem.addPowerup(BuiltInPowerupCodes.DisableCards);
+  const descendants = (await rem.getDescendants()) || [];
+  for (const child of descendants) {
+    await child.addPowerup(BuiltInPowerupCodes.DisableCards);
+  }
   const title = (await plugin.richText.toString(rem.text || [])).slice(0, 50);
-  await plugin.app.toast(`⏸️ Конспект «${title}» приостановлен и исключён из очереди повторений.`);
+  await plugin.app.toast(`⏸️ Конспект «${title}» и все его карточки приостановлены и исключены из очередей.`);
 }
 
 // ============================================================
@@ -630,310 +674,421 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
   }
 
-  // 10. Единая суперкоманда: "🪄 Причесать конспект" в один клик
+  // 10. Форматирование одного конспекта
+  async function tidyUpSingleNote(plugin: ReactRNPlugin, target: PluginRem): Promise<{ headingsCount: number; codeBlocksCount: number }> {
+    const allRemList = await target.getDescendants();
+    if (!allRemList || allRemList.length === 0) {
+      return { headingsCount: 0, codeBlocksCount: 0 };
+    }
+
+    function cleanHeadingTitle(raw: string): string {
+      let s = raw.trim();
+      s = s.replace(/^[#\s]+/, '');
+      while (s.startsWith('##') || s.startsWith('#')) {
+        s = s.replace(/^[#\s]+/, '');
+      }
+      s = s.replace(/^[\p{Emoji}\u200d\ufe0f\s]+/u, '');
+      s = s.replace(/^[^\w\sа-яА-ЯёЁa-zA-Z0-9]+\s*/, '');
+      return s.trim();
+    }
+
+    function isAsciiDiagram(text: string): boolean {
+      if (!text) return false;
+      if (/---|\/|\\|-->|==>|<-|<--/.test(text)) return true;
+      if (/\((main|master|feature|origin|head|dev|staging|auth|bugfix)[^)]*\)/i.test(text)) return true;
+      if (text.startsWith('|') || text.startsWith('+--') || text.startsWith('+==')) return true;
+      if (text.includes('удаляются сборщиком мусора') || text.includes('garbage collect')) return true;
+      return false;
+    }
+
+    function cleanProseText(text: string): string {
+      let s = text
+        .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
+        .replace(/\n?```$/, '')
+        .trim();
+      s = s.replace(/(?<!`)git branch feature-auth(?!`)/g, '`git branch feature-auth`');
+      s = s.replace(/(?<!`)\.git\/refs\/heads\/(?!`)/g, '`.git/refs/heads/`');
+      s = s.replace(/(?<!`)git branch -v(?!`)/g, '`git branch -v`');
+      return s;
+    }
+
+    function isCodeSnippet(text: string): boolean {
+      if (!text) return false;
+      if (text.startsWith('```')) return true;
+      const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
+      if (russianWords.length >= 4) {
+        return false;
+      }
+      return (
+        text.startsWith('# Старый') ||
+        text.startsWith('# Новый') ||
+        text.startsWith('#') ||
+        text.startsWith('git ') ||
+        text.startsWith('def ') ||
+        text.startsWith('class ') ||
+        text.startsWith('import ') ||
+        text.startsWith('from ') ||
+        text.startsWith('async def ') ||
+        text.startsWith('pip install') ||
+        text.startsWith('docker ') ||
+        text.startsWith('docker-compose') ||
+        text.startsWith('$ ') ||
+        text.startsWith('kubectl ') ||
+        text.startsWith('python ') ||
+        text.startsWith('npm ') ||
+        isAsciiDiagram(text)
+      ) && !text.includes('::') && !text.includes('?');
+    }
+
+    type RemEntry = {
+      rem: PluginRem;
+      text: string;
+      isCode: boolean;
+      isCard: boolean;
+      isHeading: boolean;
+      cleanTitle: string;
+      isDot: boolean;
+      isCodeCandidate: boolean;
+      isProseInCode: boolean;
+    };
+
+    const entries: RemEntry[] = [];
+    for (const rem of allRemList) {
+      let text = '';
+      try {
+        text = (await plugin.richText.toString(rem.text || [])).trim();
+      } catch (_) {}
+      const isCode = (await rem.hasPowerup(BuiltInPowerupCodes.Code)) || (await rem.isCode());
+      const isCard = text.includes('📖 Перечитать') || text.includes('Конспект перечитан');
+      const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
+      const cleanTitle = cleanHeadingTitle(text);
+
+      const isHeading =
+        !isCard &&
+        cleanTitle.length >= 3 &&
+        (text.startsWith('#') || (await rem.getFontSize()) === 'H2' || (await rem.getFontSize()) === 'H1') &&
+        russianWords.length < 15 &&
+        !isCodeSnippet(text);
+
+      const isDot = text === '.' || text === '# .' || text === '•';
+      const isProseInCode = (isCode || text.startsWith('```')) && russianWords.length >= 4;
+      const isCodeCandidate = !isHeading && !isCard && !isDot && (isCode || isCodeSnippet(text)) && !isProseInCode;
+
+      entries.push({
+        rem,
+        text,
+        isCode,
+        isCard,
+        isHeading,
+        cleanTitle,
+        isDot,
+        isCodeCandidate,
+        isProseInCode,
+      });
+    }
+
+    type PlanAction =
+      | { type: 'card'; rem: PluginRem; text: string }
+      | { type: 'spacer' }
+      | { type: 'heading'; rem: PluginRem; title: string }
+      | { type: 'prose'; rem: PluginRem; text: string }
+      | { type: 'code_block'; rem: PluginRem; code: string };
+
+    const plan: PlanAction[] = [];
+
+    // 1. Карточка
+    const cardEntry = entries.find(e => e.isCard);
+    if (cardEntry) {
+      plan.push({ type: 'card', rem: cardEntry.rem, text: cardEntry.text });
+      plan.push({ type: 'spacer' });
+      plan.push({ type: 'spacer' });
+      plan.push({ type: 'spacer' });
+    }
+
+    // 2. Дедупликация и план секций
+    let isFirstSection = true;
+    const seenHeadings = new Set<string>();
+    const seenProse = new Set<string>();
+    const seenCode = new Set<string>();
+
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      if (entry.isCard) continue;
+
+      if (entry.isHeading) {
+        if (seenHeadings.has(entry.cleanTitle)) {
+          continue;
+        }
+        seenHeadings.add(entry.cleanTitle);
+
+        if (!isFirstSection) {
+          plan.push({ type: 'spacer' });
+          plan.push({ type: 'spacer' });
+        }
+        plan.push({ type: 'heading', rem: entry.rem, title: entry.cleanTitle });
+        isFirstSection = false;
+        continue;
+      }
+
+      if (entry.isProseInCode) {
+        const prose = cleanProseText(entry.text);
+        if (prose.length > 0 && !seenProse.has(prose)) {
+          seenProse.add(prose);
+          plan.push({ type: 'prose', rem: entry.rem, text: prose });
+        }
+        continue;
+      }
+
+      if (entry.isCodeCandidate) {
+        const cleanCode = entry.text
+          .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
+          .replace(/\n?```$/, '')
+          .trim();
+        if (cleanCode.length > 0 && !seenCode.has(cleanCode)) {
+          seenCode.add(cleanCode);
+          plan.push({ type: 'code_block', rem: entry.rem, code: cleanCode });
+        }
+        continue;
+      }
+
+      if (!entry.isDot && entry.text.length > 0) {
+        const prose = cleanProseText(entry.text);
+        if (prose.length > 0 && !seenProse.has(prose)) {
+          seenProse.add(prose);
+          plan.push({ type: 'prose', rem: entry.rem, text: prose });
+        }
+      }
+    }
+
+    // 3. Пул свободных узлов
+    const usedRemIds = new Set<string>();
+    for (const p of plan) {
+      if ('rem' in p && p.rem) {
+        usedRemIds.add(p.rem._id);
+      }
+    }
+    const remPool = entries.filter(e => !usedRemIds.has(e.rem._id)).map(e => e.rem);
+    let poolIdx = 0;
+
+    async function getSpareRem(): Promise<PluginRem | undefined> {
+      if (poolIdx < remPool.length) {
+        return remPool[poolIdx++];
+      }
+      return await plugin.rem.createRem();
+    }
+
+    // 4. Применяем план
+    let currentPos = 0;
+    let headingsCount = 0;
+    let codeBlocksCount = 0;
+
+    for (const action of plan) {
+      if (action.type === 'card') {
+        await action.rem.setParent(target, currentPos++);
+      } else if (action.type === 'spacer') {
+        const spacer = await getSpareRem();
+        if (spacer) {
+          await spacer.setText(await plugin.richText.text('').value());
+          await spacer.setIsCode(false);
+          try { await spacer.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+          try { await spacer.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+          await spacer.setFontSize('H1');
+          await spacer.setParent(target, currentPos++);
+        }
+      } else if (action.type === 'heading') {
+        await action.rem.setText(await plugin.richText.text(`## ${action.title}`).value());
+        await action.rem.setFontSize('H2');
+        await action.rem.setIsCode(false);
+        try { await action.rem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+        try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+        await action.rem.setParent(target, currentPos++);
+        headingsCount++;
+      } else if (action.type === 'prose') {
+        await action.rem.setText(await plugin.richText.text(action.text).value());
+        await action.rem.setIsCode(false);
+        try { await action.rem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+        try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+        await action.rem.setParent(target, currentPos++);
+      } else if (action.type === 'code_block') {
+        const wrapper = await getSpareRem();
+        if (wrapper) {
+          await wrapper.setText(await plugin.richText.text('.').value());
+          await wrapper.setIsCode(false);
+          try { await wrapper.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+          try { await wrapper.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+          await wrapper.setParent(target, currentPos++);
+
+          await action.rem.setText(await plugin.richText.text(action.code).value());
+          await action.rem.setIsCode(true);
+          await action.rem.addPowerup(BuiltInPowerupCodes.Code);
+          try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+          await action.rem.setParent(wrapper, 0);
+          codeBlocksCount++;
+        } else {
+          await action.rem.setText(await plugin.richText.text(action.code).value());
+          await action.rem.setIsCode(true);
+          await action.rem.addPowerup(BuiltInPowerupCodes.Code);
+          await action.rem.setParent(target, currentPos++);
+          codeBlocksCount++;
+        }
+      }
+    }
+
+    // 5. Очищаем лишние узлы
+    while (poolIdx < remPool.length) {
+      const leftover = remPool[poolIdx++];
+      try {
+        await leftover.setText(await plugin.richText.text('').value());
+        await leftover.setIsCode(false);
+        await leftover.setFontSize('H1');
+        try { await leftover.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
+        try { await leftover.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
+        try { await leftover.remove(); } catch (_) {}
+      } catch (_) {}
+    }
+
+    // 6. Управление спящими карточками для FSRS:
+    // Если конспект на стадии 0 (ещё не изучен), детальные карточки должны спать (DisableCards)
+    try {
+      const schedState = (await plugin.storage.getSynced<any>(`note_sched_${target._id}`)) || { stage: 0 };
+      if ((schedState.stage || 0) === 0) {
+        if (await target.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+          await target.removePowerup(BuiltInPowerupCodes.DisableCards);
+        }
+        if (cardEntry && (await cardEntry.rem.hasPowerup(BuiltInPowerupCodes.DisableCards))) {
+          await cardEntry.rem.removePowerup(BuiltInPowerupCodes.DisableCards);
+        }
+        for (const entry of entries) {
+          if (!entry.isCard) {
+            let isCard = false;
+            try {
+              const cards = await entry.rem.getCards();
+              isCard = (cards && cards.length > 0) || false;
+            } catch (_) {}
+            if (!isCard) {
+              isCard = entry.text.includes('::') || entry.text.includes('==');
+            }
+            if (isCard) {
+              await entry.rem.addPowerup(BuiltInPowerupCodes.DisableCards);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    return { headingsCount, codeBlocksCount };
+  }
+
+  // 11. Единая суперкоманда: "🪄 Причесать конспект" (с поддержкой пакетной обработки папок)
   async function tidyUpNote(plugin: ReactRNPlugin, rootRem?: PluginRem) {
     const target = rootRem || (await plugin.focus.getFocusedRem());
     if (!target) {
-      await plugin.app.toast('Откройте конспект и повторите команду');
+      await plugin.app.toast('Откройте конспект или выберите папку и повторите команду');
       return;
     }
 
     try {
-      await plugin.app.toast('🪄 Начинаем причесывать конспект...');
-
-      const allRemList = await target.getDescendants();
-      if (!allRemList || allRemList.length === 0) {
-        await plugin.app.toast('Конспект пуст');
-        return;
-      }
-
-      function cleanHeadingTitle(raw: string): string {
-        let s = raw.trim();
-        // Убираем решетки и пробелы в начале
-        s = s.replace(/^[#\s]+/, '');
-        while (s.startsWith('##') || s.startsWith('#')) {
-          s = s.replace(/^[#\s]+/, '');
+      // Рекурсивный поиск листовых конспектов
+      async function collectNoteDocuments(root: PluginRem): Promise<PluginRem[]> {
+        const children = (await root.getChildrenRem()) || [];
+        const childDocs: PluginRem[] = [];
+        for (const ch of children) {
+          if (await ch.isDocument()) {
+            childDocs.push(ch);
+          }
         }
-        // Убираем любые эмодзи в начале заголовка
-        s = s.replace(/^[\p{Emoji}\u200d\ufe0f\s]+/u, '');
-        // Убираем лишние знаки препинания в начале
-        s = s.replace(/^[^\w\sа-яА-ЯёЁa-zA-Z0-9]+\s*/, '');
-        return s.trim();
+
+        if (childDocs.length > 0) {
+          const result: PluginRem[] = [];
+          for (const doc of childDocs) {
+            const subNotes = await collectNoteDocuments(doc);
+            result.push(...subNotes);
+          }
+          return result;
+        } else {
+          return [root];
+        }
       }
 
-      function isAsciiDiagram(text: string): boolean {
-        if (!text) return false;
-        if (/---|\/|\\|-->|==>|<-|<--/.test(text)) return true;
-        if (/\((main|master|feature|origin|head|dev|staging|auth|bugfix)[^)]*\)/i.test(text)) return true;
-        if (text.startsWith('|') || text.startsWith('+--') || text.startsWith('+==')) return true;
-        if (text.includes('удаляются сборщиком мусора') || text.includes('garbage collect')) return true;
+      // Проверка, является ли документ конспектом
+      async function isEligibleNote(doc: PluginRem): Promise<boolean> {
+        const parent = await doc.getParentRem();
+        if (parent) {
+          const parentTitle = (await plugin.richText.toString(parent.text || [])).toLowerCase();
+          if (parentTitle.includes('конспект')) return true;
+        }
+        const title = (await plugin.richText.toString(doc.text || [])).trim();
+        if (/^\d{2}\./.test(title)) return true;
+
+        const descendants = (await doc.getDescendants()) || [];
+        for (const d of descendants) {
+          const t = (await plugin.richText.toString(d.text || [])).trim();
+          if (t.includes('📖 Перечитать') || t.includes('Конспект перечитан')) {
+            return true;
+          }
+        }
         return false;
       }
 
-      function cleanProseText(text: string): string {
-        let s = text
-          .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
-          .replace(/\n?```$/, '')
-          .trim();
-        // Оформляем команды и пути в инлайн-код `...`
-        s = s.replace(/(?<!`)git branch feature-auth(?!`)/g, '`git branch feature-auth`');
-        s = s.replace(/(?<!`)\.git\/refs\/heads\/(?!`)/g, '`.git/refs/heads/`');
-        s = s.replace(/(?<!`)git branch -v(?!`)/g, '`git branch -v`');
-        return s;
-      }
+      const allLeafDocs = await collectNoteDocuments(target);
 
-      function isCodeSnippet(text: string): boolean {
-        if (!text) return false;
-        if (text.startsWith('```')) return true;
-        const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
-        if (russianWords.length >= 4) {
-          return false;
-        }
-        return (
-          text.startsWith('# Старый') ||
-          text.startsWith('# Новый') ||
-          text.startsWith('#') ||
-          text.startsWith('git ') ||
-          text.startsWith('def ') ||
-          text.startsWith('class ') ||
-          text.startsWith('import ') ||
-          text.startsWith('from ') ||
-          text.startsWith('async def ') ||
-          text.startsWith('pip install') ||
-          text.startsWith('docker ') ||
-          text.startsWith('docker-compose') ||
-          text.startsWith('$ ') ||
-          text.startsWith('kubectl ') ||
-          text.startsWith('python ') ||
-          text.startsWith('npm ') ||
-          isAsciiDiagram(text)
-        ) && !text.includes('::') && !text.includes('?');
-      }
-
-      // Собираем метаданные обо всех узлах
-      type RemEntry = {
-        rem: PluginRem;
-        text: string;
-        isCode: boolean;
-        isCard: boolean;
-        isHeading: boolean;
-        cleanTitle: string;
-        isDot: boolean;
-        isCodeCandidate: boolean;
-        isProseInCode: boolean;
-      };
-
-      const entries: RemEntry[] = [];
-      for (const rem of allRemList) {
-        let text = '';
-        try {
-          text = (await plugin.richText.toString(rem.text || [])).trim();
-        } catch (_) {}
-        const isCode = (await rem.hasPowerup(BuiltInPowerupCodes.Code)) || (await rem.isCode());
-        const isCard = text.includes('📖 Перечитать') || text.includes('Конспект перечитан');
-        const russianWords = text.match(/[а-яА-ЯёЁ]{3,}/g) || [];
-        const cleanTitle = cleanHeadingTitle(text);
-
-        // Заголовок ОБЯЗАН иметь реальный текст (минимум 3 буквы) и не быть пустым
-        const isHeading =
-          !isCard &&
-          cleanTitle.length >= 3 &&
-          (text.startsWith('#') || (await rem.getFontSize()) === 'H2' || (await rem.getFontSize()) === 'H1') &&
-          russianWords.length < 15 &&
-          !isCodeSnippet(text);
-
-        const isDot = text === '.' || text === '# .' || text === '•';
-        const isProseInCode = (isCode || text.startsWith('```')) && russianWords.length >= 4;
-        const isCodeCandidate = !isHeading && !isCard && !isDot && (isCode || isCodeSnippet(text)) && !isProseInCode;
-
-        entries.push({
-          rem,
-          text,
-          isCode,
-          isCard,
-          isHeading,
-          cleanTitle,
-          isDot,
-          isCodeCandidate,
-          isProseInCode,
-        });
-      }
-
-      // Формируем плоский план расположения
-      type PlanAction =
-        | { type: 'card'; rem: PluginRem; text: string }
-        | { type: 'spacer' }
-        | { type: 'heading'; rem: PluginRem; title: string }
-        | { type: 'prose'; rem: PluginRem; text: string }
-        | { type: 'code_block'; rem: PluginRem; code: string };
-
-      const plan: PlanAction[] = [];
-
-      // 1. Карточка
-      const cardEntry = entries.find(e => e.isCard);
-      if (cardEntry) {
-        plan.push({ type: 'card', rem: cardEntry.rem, text: cardEntry.text });
-        plan.push({ type: 'spacer' });
-        plan.push({ type: 'spacer' });
-        plan.push({ type: 'spacer' });
-      }
-
-      // 2. Обходим остальные элементы с дедупликацией
-      let isFirstSection = true;
-      const seenHeadings = new Set<string>();
-      const seenProse = new Set<string>();
-      const seenCode = new Set<string>();
-
-      for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i];
-        if (entry.isCard) continue;
-
-        if (entry.isHeading) {
-          // Исключаем дублирующиеся заголовки с одинаковым текстом
-          if (seenHeadings.has(entry.cleanTitle)) {
-            continue;
-          }
-          seenHeadings.add(entry.cleanTitle);
-
-          if (!isFirstSection) {
-            plan.push({ type: 'spacer' });
-            plan.push({ type: 'spacer' });
-          }
-          plan.push({ type: 'heading', rem: entry.rem, title: entry.cleanTitle });
-          isFirstSection = false;
-          continue;
-        }
-
-        if (entry.isProseInCode) {
-          const prose = cleanProseText(entry.text);
-          if (prose.length > 0 && !seenProse.has(prose)) {
-            seenProse.add(prose);
-            plan.push({ type: 'prose', rem: entry.rem, text: prose });
-          }
-          continue;
-        }
-
-        if (entry.isCodeCandidate) {
-          const cleanCode = entry.text
-            .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, '')
-            .replace(/\n?```$/, '')
-            .trim();
-          if (cleanCode.length > 0 && !seenCode.has(cleanCode)) {
-            seenCode.add(cleanCode);
-            plan.push({ type: 'code_block', rem: entry.rem, code: cleanCode });
-          }
-          continue;
-        }
-
-        if (!entry.isDot && entry.text.length > 0) {
-          const prose = cleanProseText(entry.text);
-          if (prose.length > 0 && !seenProse.has(prose)) {
-            seenProse.add(prose);
-            plan.push({ type: 'prose', rem: entry.rem, text: prose });
+      // Если найдено больше одного документа, фильтруем по признаку конспекта
+      let notesToProcess: PluginRem[] = allLeafDocs;
+      if (allLeafDocs.length > 1) {
+        const filtered: PluginRem[] = [];
+        for (const d of allLeafDocs) {
+          if (await isEligibleNote(d)) {
+            filtered.push(d);
           }
         }
-      }
-
-      // 3. Пул свободных узлов для спейсеров и оберток "."
-      const usedRemIds = new Set<string>();
-      for (const p of plan) {
-        if ('rem' in p && p.rem) {
-          usedRemIds.add(p.rem._id);
+        if (filtered.length > 0) {
+          notesToProcess = filtered;
         }
       }
-      const remPool = entries.filter(e => !usedRemIds.has(e.rem._id)).map(e => e.rem);
-      let poolIdx = 0;
 
-      async function getSpareRem(): Promise<PluginRem | undefined> {
-        if (poolIdx < remPool.length) {
-          return remPool[poolIdx++];
-        }
-        return await plugin.rem.createRem();
+      if (notesToProcess.length === 0) {
+        await plugin.app.toast('Конспекты для обработки не найдены');
+        return;
       }
 
-      // 4. Применяем план
-      let currentPos = 0;
-      let headingsCount = 0;
-      let codeBlocksCount = 0;
-
-      for (const action of plan) {
-        if (action.type === 'card') {
-          await action.rem.setParent(target, currentPos++);
-        } else if (action.type === 'spacer') {
-          const spacer = await getSpareRem();
-          if (spacer) {
-            await spacer.setText(await plugin.richText.text('').value());
-            await spacer.setIsCode(false);
-            try { await spacer.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
-            try { await spacer.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-            await spacer.setFontSize('H1'); // сброс H2 размера
-            await spacer.setParent(target, currentPos++);
-          }
-        } else if (action.type === 'heading') {
-          await action.rem.setText(await plugin.richText.text(`## ${action.title}`).value());
-          await action.rem.setFontSize('H2');
-          await action.rem.setIsCode(false);
-          try { await action.rem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
-          try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-          await action.rem.setParent(target, currentPos++);
-          headingsCount++;
-        } else if (action.type === 'prose') {
-          await action.rem.setText(await plugin.richText.text(action.text).value());
-          await action.rem.setIsCode(false);
-          try { await action.rem.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
-          try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-          await action.rem.setParent(target, currentPos++);
-        } else if (action.type === 'code_block') {
-          const wrapper = await getSpareRem();
-          if (wrapper) {
-            await wrapper.setText(await plugin.richText.text('.').value());
-            await wrapper.setIsCode(false);
-            try { await wrapper.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
-            try { await wrapper.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-            await wrapper.setParent(target, currentPos++);
-
-            await action.rem.setText(await plugin.richText.text(action.code).value());
-            await action.rem.setIsCode(true);
-            await action.rem.addPowerup(BuiltInPowerupCodes.Code);
-            try { await action.rem.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-            await action.rem.setParent(wrapper, 0);
-            codeBlocksCount++;
-          } else {
-            await action.rem.setText(await plugin.richText.text(action.code).value());
-            await action.rem.setIsCode(true);
-            await action.rem.addPowerup(BuiltInPowerupCodes.Code);
-            await action.rem.setParent(target, currentPos++);
-            codeBlocksCount++;
+      if (notesToProcess.length === 1) {
+        const singleNote = notesToProcess[0];
+        const title = (await plugin.richText.toString(singleNote.text || [])).slice(0, 40);
+        await plugin.app.toast(`🪄 Причесываем конспект «${title}»...`);
+        const res = await tidyUpSingleNote(plugin, singleNote);
+        await plugin.app.toast(
+          `✨ Конспект идеально оформлен! Разделов: ${res.headingsCount}, блоков кода: ${res.codeBlocksCount}`
+        );
+      } else {
+        await plugin.app.toast(
+          `🪄 Найдено конспектов для пакетной обработки: ${notesToProcess.length}. Начинаем...`
+        );
+        let successCount = 0;
+        for (let i = 0; i < notesToProcess.length; i++) {
+          const note = notesToProcess[i];
+          const title = (await plugin.richText.toString(note.text || [])).slice(0, 30);
+          await plugin.app.toast(`🪄 [${i + 1}/${notesToProcess.length}] «${title}»...`);
+          try {
+            await tidyUpSingleNote(plugin, note);
+            successCount++;
+          } catch (err) {
+            console.error(`Ошибка при причесывании конспекта ${title}:`, err);
           }
         }
+        await plugin.app.toast(
+          `✨ Пакетная обработка завершена! Успешно причёсано: ${successCount} из ${notesToProcess.length} конспектов`
+        );
       }
-
-      // 5. Очищаем лишние узлы: сбрасываем H2 и текст, НЕ добавляем их в документ!
-      while (poolIdx < remPool.length) {
-        const leftover = remPool[poolIdx++];
-        try {
-          await leftover.setText(await plugin.richText.text('').value());
-          await leftover.setIsCode(false);
-          await leftover.setFontSize('H1'); // обязательно сбрасываем H2!
-          try { await leftover.removePowerup(BuiltInPowerupCodes.Code); } catch (_) {}
-          try { await leftover.removePowerup(BuiltInPowerupCodes.Divider); } catch (_) {}
-          try { await leftover.remove(); } catch (_) {}
-        } catch (_) {}
-      }
-
-      await plugin.app.toast(
-        `✨ Конспект идеально оформлен! Разделов: ${headingsCount}, блоков кода: ${codeBlocksCount}`
-      );
     } catch (e) {
       console.error('tidyUpNote failed:', e);
-      await plugin.app.toast(`Ошибка при оформлении конспекта: ${String(e)}`);
+      await plugin.app.toast(`Ошибка при оформлении: ${String(e)}`);
     }
   }
 
   // Регистрация команд палитры (Ctrl+K)
   await plugin.app.registerCommand({
     id: 'tidy-up-note',
-    name: '🪄 Причесать конспект (выпрямить и оформить всё в 1 клик)',
+    name: '🪄 Причесать конспект(ы) (пакетно для папки или в 1 клик для документа)',
     action: async () => {
       await tidyUpNote(plugin);
     },
@@ -973,7 +1128,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   await plugin.app.registerCommand({
     id: 'format-full-note',
-    name: '✨ Полное оформление конспекта (выпрямление лесенки + разделители + код без bullet)',
+    name: '✨ Полное оформление конспекта (пакетно для папки или в 1 клик)',
     action: async () => {
       await tidyUpNote(plugin);
     },
@@ -983,7 +1138,7 @@ async function onActivate(plugin: ReactRNPlugin) {
   try {
     await plugin.app.registerMenuItem({
       id: 'menu-tidy-up-note',
-      name: '🪄 Причесать конспект (в 1 клик)',
+      name: '🪄 Причесать конспект(ы) (пакетно / в 1 клик)',
       location: PluginCommandMenuLocation.DocumentMenu,
       action: async (args: any) => {
         const remId = args?.remId;

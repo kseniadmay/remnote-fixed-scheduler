@@ -72,9 +72,11 @@ export const NoteSchedulerBar = () => {
     setLoading(true);
     try {
       // 1. Включаем карточки в конспекте для FSRS
-      await rem.removePowerup(BuiltInPowerupCodes.DisableCards);
-      const children = await rem.getChildrenRem();
-      for (const ch of children) {
+      if (await rem.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+        await rem.removePowerup(BuiltInPowerupCodes.DisableCards);
+      }
+      const descendants = (await rem.getDescendants()) || [];
+      for (const ch of descendants) {
         if (await ch.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
           await ch.removePowerup(BuiltInPowerupCodes.DisableCards);
         }
@@ -90,7 +92,7 @@ export const NoteSchedulerBar = () => {
       await plugin.storage.setSynced(`note_sched_${rem._id}`, newState);
 
       await plugin.app.toast(
-        `✅ Конспект изучен! Карточки включены и отданы в FSRS. Первое повторение конспекта: завтра.`
+        `✅ Конспект изучен! Детальные карточки разблокированы и отданы в FSRS. Первое повторение конспекта: завтра.`
       );
     } catch (e) {
       await plugin.app.toast(`Ошибка: ${String(e)}`);
@@ -131,12 +133,16 @@ export const NoteSchedulerBar = () => {
     }
   };
 
-  // Поставить карточки на паузу
+  // Поставить конспект и карточки на паузу
   const handlePauseCards = async () => {
     setLoading(true);
     try {
       await rem.addPowerup(BuiltInPowerupCodes.DisableCards);
-      await plugin.app.toast(`⏸️ Карточки конспекта приостановлены (исключены из очередей).`);
+      const descendants = (await rem.getDescendants()) || [];
+      for (const ch of descendants) {
+        await ch.addPowerup(BuiltInPowerupCodes.DisableCards);
+      }
+      await plugin.app.toast(`⏸️ Конспект и все его карточки приостановлены (исключены из очередей).`);
     } catch (e) {
       await plugin.app.toast(`Ошибка: ${String(e)}`);
     } finally {
@@ -144,18 +150,20 @@ export const NoteSchedulerBar = () => {
     }
   };
 
-  // Снять карточки с паузы
+  // Снять конспект и карточки с паузы
   const handleResumeCards = async () => {
     setLoading(true);
     try {
-      await rem.removePowerup(BuiltInPowerupCodes.DisableCards);
-      const children = await rem.getChildrenRem();
-      for (const ch of children) {
+      if (await rem.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+        await rem.removePowerup(BuiltInPowerupCodes.DisableCards);
+      }
+      const descendants = (await rem.getDescendants()) || [];
+      for (const ch of descendants) {
         if (await ch.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
           await ch.removePowerup(BuiltInPowerupCodes.DisableCards);
         }
       }
-      await plugin.app.toast(`▶️ Карточки конспекта возобновлены в FSRS.`);
+      await plugin.app.toast(`▶️ Конспект и карточки возобновлены в очередях повторений.`);
     } catch (e) {
       await plugin.app.toast(`Ошибка: ${String(e)}`);
     } finally {
@@ -168,6 +176,10 @@ export const NoteSchedulerBar = () => {
     setLoading(true);
     try {
       await rem.addPowerup(BuiltInPowerupCodes.DisableCards);
+      const descendants = (await rem.getDescendants()) || [];
+      for (const ch of descendants) {
+        await ch.addPowerup(BuiltInPowerupCodes.DisableCards);
+      }
       await plugin.storage.setSynced(`note_sched_${rem._id}`, { stage: 0 });
       await plugin.app.toast(`Цикл конспекта сброшен. Карточки усыплены до нового изучения.`);
     } catch (e) {
@@ -230,9 +242,11 @@ export const NoteSchedulerBar = () => {
           <div style={{ fontSize: '11px', color: '#64748b' }}>
             Карточки конспекта:{' '}
             {isPaused ? (
-              <span style={{ color: '#d97706' }}>спят (не попадают в очередь)</span>
+              <span style={{ color: '#d97706' }}>спят (пауза)</span>
+            ) : stage === 0 ? (
+              <span style={{ color: '#d97706' }}>спят (ждут 1-го прочтения)</span>
             ) : (
-              <span style={{ color: '#145a46' }}>активны в FSRS</span>
+              <span style={{ color: '#145a46', fontWeight: 500 }}>активны в FSRS</span>
             )}
           </div>
         </div>
