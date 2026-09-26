@@ -23,11 +23,69 @@ export const NoteSchedulerBar = () => {
   const plugin = usePlugin();
   const [loading, setLoading] = useState(false);
 
-  const data = useTrackerPlugin(async () => {
+  const data = useTrackerPlugin(async (rp) => {
     try {
-      const widgetCtx = await plugin.widget.getWidgetContext<WidgetLocation.DocumentBelowTitle>();
-      const docId = widgetCtx?.documentId;
-      const rem = docId ? await plugin.rem.findOne(docId) : await plugin.focus.getFocusedRem();
+      // 1. Надёжное определение открытого документа
+      let rem: any = undefined;
+
+      // Способ 1: Контекст виджета
+      try {
+        const widgetCtx = await rp.widget.getWidgetContext<any>();
+        const docId = widgetCtx?.documentId || widgetCtx?.remId;
+        if (docId) {
+          const r = await rp.rem.findOne(docId);
+          if (r && (await r.isDocument())) {
+            rem = r;
+          }
+        }
+      } catch (_) {}
+
+      // Способ 2: Открытая панель (Window API)
+      if (!rem) {
+        try {
+          const focusedPaneId = await rp.window.getFocusedPaneId();
+          if (focusedPaneId) {
+            const paneRemId = await rp.window.getOpenPaneRemId(focusedPaneId);
+            if (paneRemId) {
+              const r = await rp.rem.findOne(paneRemId);
+              if (r && (await r.isDocument())) {
+                rem = r;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Способ 3: Список открытых панелей
+      if (!rem) {
+        try {
+          const openRemIds = await rp.window.getOpenPaneRemIds();
+          if (openRemIds && openRemIds.length > 0) {
+            for (const id of openRemIds) {
+              const r = await rp.rem.findOne(id);
+              if (r && (await r.isDocument())) {
+                rem = r;
+                break;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Способ 4: Фокус, поднимаясь к родительскому документу
+      if (!rem) {
+        try {
+          let focused = await rp.focus.getFocusedRem();
+          while (focused) {
+            if (await focused.isDocument()) {
+              rem = focused;
+              break;
+            }
+            focused = await focused.getParentRem();
+          }
+        } catch (_) {}
+      }
+
       if (!rem) return null;
       const isDoc = await rem.isDocument();
       if (!isDoc) return null;
@@ -36,7 +94,7 @@ export const NoteSchedulerBar = () => {
       const children = (await rem.getChildrenRem()) || [];
       let isNote = false;
       for (const ch of children) {
-        const text = (await plugin.richText.toString(ch.text || [])).toLowerCase();
+        const text = (await rp.richText.toString(ch.text || [])).toLowerCase();
         if (text.includes('перечитать') || text.includes('прочитан') || text.includes('перечитан')) {
           isNote = true;
           break;
@@ -46,7 +104,7 @@ export const NoteSchedulerBar = () => {
       if (!isNote) {
         const descendants = (await rem.getDescendants()) || [];
         for (const ch of descendants.slice(0, 40)) {
-          const text = (await plugin.richText.toString(ch.text || [])).toLowerCase();
+          const text = (await rp.richText.toString(ch.text || [])).toLowerCase();
           if (text.includes('перечитать') || text.includes('прочитан') || text.includes('перечитан')) {
             isNote = true;
             break;
@@ -59,12 +117,26 @@ export const NoteSchedulerBar = () => {
       }
 
       const isPaused = await rem.hasPowerup(BuiltInPowerupCodes.DisableCards);
-      const title = await plugin.richText.toString(rem.text || []);
-      const schedState = (await plugin.storage.getSynced<NoteScheduleState>(`note_sched_${rem._id}`)) || {
+      const title = await rp.richText.toString(rem.text || []);
+      const schedState = (await rp.storage.getSynced<NoteScheduleState>(`note_sched_${rem._id}`)) || {
         stage: 0,
       };
 
-      const manifestEntry = (noteCardsManifestRaw as any)[rem._id];
+      // Поиск темы в манифесте по ID конспекта
+      let manifestEntry = (noteCardsManifestRaw as any)[rem._id];
+
+      // Fallback: поиск темы по совпадению названия конспекта, если ID не совпал
+      if (!manifestEntry && title) {
+        const cleanTitle = title.toLowerCase().replace(/^\d+[\.\s]+/, '').trim();
+        for (const entry of Object.values(noteCardsManifestRaw as Record<string, any>)) {
+          const entryClean = (entry.noteTitle || '').toLowerCase().replace(/^\d+[\.\s]+/, '').trim();
+          if (cleanTitle && (entryClean.includes(cleanTitle) || cleanTitle.includes(entryClean))) {
+            manifestEntry = entry;
+            break;
+          }
+        }
+      }
+
       const cardThemeId = manifestEntry?.cardThemeId || schedState.cardThemeId || null;
       const cardThemeTitle = manifestEntry?.cardThemeTitle || schedState.cardThemeTitle || null;
       const reviewCardId = manifestEntry?.reviewCardId || null;
