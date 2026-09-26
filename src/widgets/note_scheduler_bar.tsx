@@ -67,8 +67,9 @@ export const NoteSchedulerBar = () => {
       const manifestEntry = (noteCardsManifestRaw as any)[rem._id];
       const cardThemeId = manifestEntry?.cardThemeId || schedState.cardThemeId || null;
       const cardThemeTitle = manifestEntry?.cardThemeTitle || schedState.cardThemeTitle || null;
+      const reviewCardId = manifestEntry?.reviewCardId || null;
 
-      return { rem, isDoc, isPaused, title, schedState, cardThemeId, cardThemeTitle };
+      return { rem, isDoc, isPaused, title, schedState, cardThemeId, cardThemeTitle, reviewCardId };
     } catch (_) {
       return null;
     }
@@ -78,7 +79,7 @@ export const NoteSchedulerBar = () => {
     return null;
   }
 
-  const { rem, isPaused, schedState, cardThemeId, cardThemeTitle } = data;
+  const { rem, isPaused, schedState, cardThemeId, cardThemeTitle, reviewCardId } = data;
   const stage = schedState.stage || 0;
 
   // Форматирование даты
@@ -238,6 +239,50 @@ export const NoteSchedulerBar = () => {
         lastReviewDate: Date.now(),
       };
       await plugin.storage.setSynced(`note_sched_${rem._id}`, newState);
+    } catch (e) {
+      await plugin.app.toast(`Ошибка: ${String(e)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Заморозить неизученные темы через RemNote API
+  const handleFreezeOthers = async () => {
+    setLoading(true);
+    try {
+      await plugin.app.toast('❄️ Очищаем очередь от неизученных тем через RemNote API...');
+      let frozenCount = 0;
+      const manifestEntries = Object.entries(noteCardsManifestRaw as Record<string, any>);
+
+      for (const [nId, entry] of manifestEntries) {
+        if (entry.reviewCardId && entry.reviewCardId !== reviewCardId) {
+          try {
+            const revRem = await plugin.rem.findOne(entry.reviewCardId);
+            if (revRem) {
+              if (!(await revRem.hasPowerup(BuiltInPowerupCodes.DisableCards))) {
+                await revRem.addPowerup(BuiltInPowerupCodes.DisableCards);
+              }
+              await revRem.setEnablePractice(false);
+              frozenCount++;
+            }
+          } catch (_) {}
+        }
+
+        if (entry.cardThemeId && entry.cardThemeId !== cardThemeId) {
+          try {
+            const themeRem = await plugin.rem.findOne(entry.cardThemeId);
+            if (themeRem) {
+              if (!(await themeRem.hasPowerup(BuiltInPowerupCodes.DisableCards))) {
+                await themeRem.addPowerup(BuiltInPowerupCodes.DisableCards);
+              }
+              await themeRem.setEnablePractice(false);
+              frozenCount++;
+            }
+          } catch (_) {}
+        }
+      }
+
+      await plugin.app.toast(`✅ Очередь очищена! Заморожено ${frozenCount} тем через API RemNote.`);
     } catch (e) {
       await plugin.app.toast(`Ошибка: ${String(e)}`);
     } finally {
@@ -480,6 +525,23 @@ export const NoteSchedulerBar = () => {
                 ⏸️ Пауза карточек
               </button>
             )}
+
+            <button
+              onClick={handleFreezeOthers}
+              disabled={loading}
+              style={{
+                cursor: loading ? 'wait' : 'pointer',
+                background: 'transparent',
+                color: '#2563eb',
+                border: '1px solid rgba(37, 99, 235, 0.3)',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '11px',
+              }}
+              title="Заморозить все темы, кроме этой, чтобы в очереди повторения осталась только эта тема"
+            >
+              ❄️ Очистить очередь (убрать лишнее)
+            </button>
           </>
         ) : (
           <button

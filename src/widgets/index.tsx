@@ -1564,7 +1564,99 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
   }
 
+  // Заморозка всех неизученных карточек кроме активного конспекта через нативный RemNote API
+  async function freezeAllUnstudiedCards(plugin: ReactRNPlugin, targetRem?: PluginRem) {
+    try {
+      const target = targetRem || (await plugin.focus.getFocusedRem());
+      let activeThemeId: string | undefined;
+      let activeReviewId: string | undefined;
+      let activeTitle = 'активную тему';
+
+      if (target) {
+        const manifestEntry = (noteCardsManifestRaw as any)[target._id];
+        if (manifestEntry) {
+          activeThemeId = manifestEntry.cardThemeId;
+          activeReviewId = manifestEntry.reviewCardId;
+          activeTitle = manifestEntry.cardThemeTitle || manifestEntry.noteTitle || 'активную тему';
+        }
+      }
+
+      await plugin.app.toast('❄️ Замораживаем неизученные темы в очереди через RemNote API...');
+
+      let frozenCount = 0;
+      const manifestEntries = Object.entries(noteCardsManifestRaw as Record<string, any>);
+
+      for (const [noteId, entry] of manifestEntries) {
+        if (entry.reviewCardId && entry.reviewCardId !== activeReviewId) {
+          try {
+            const revRem = await plugin.rem.findOne(entry.reviewCardId);
+            if (revRem) {
+              if (!(await revRem.hasPowerup(BuiltInPowerupCodes.DisableCards))) {
+                await revRem.addPowerup(BuiltInPowerupCodes.DisableCards);
+              }
+              await revRem.setEnablePractice(false);
+              frozenCount++;
+            }
+          } catch (_) {}
+        }
+
+        if (entry.cardThemeId && entry.cardThemeId !== activeThemeId) {
+          try {
+            const themeRem = await plugin.rem.findOne(entry.cardThemeId);
+            if (themeRem) {
+              if (!(await themeRem.hasPowerup(BuiltInPowerupCodes.DisableCards))) {
+                await themeRem.addPowerup(BuiltInPowerupCodes.DisableCards);
+              }
+              await themeRem.setEnablePractice(false);
+              frozenCount++;
+            }
+          } catch (_) {}
+        }
+      }
+
+      // Размораживаем только активную тему
+      if (activeThemeId) {
+        const activeThemeRem = await plugin.rem.findOne(activeThemeId);
+        if (activeThemeRem) {
+          if (await activeThemeRem.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+            await activeThemeRem.removePowerup(BuiltInPowerupCodes.DisableCards);
+          }
+          await activeThemeRem.setEnablePractice(true);
+          const descendants = (await activeThemeRem.getDescendants()) || [];
+          for (const d of descendants) {
+            if (await d.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+              await d.removePowerup(BuiltInPowerupCodes.DisableCards);
+            }
+            await d.setEnablePractice(true);
+          }
+        }
+      }
+
+      if (activeReviewId) {
+        const activeRevRem = await plugin.rem.findOne(activeReviewId);
+        if (activeRevRem) {
+          if (await activeRevRem.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+            await activeRevRem.removePowerup(BuiltInPowerupCodes.DisableCards);
+          }
+          await activeRevRem.setEnablePractice(true);
+        }
+      }
+
+      await plugin.app.toast(`✅ Очередь очищена! Заморожено ${frozenCount} тем. В очереди только «${activeTitle}»!`);
+    } catch (err) {
+      await plugin.app.toast(`Ошибка заморозки: ${String(err)}`);
+    }
+  }
+
   // Регистрация команд палитры (Ctrl+K)
+  await plugin.app.registerCommand({
+    id: 'freeze-all-unstudied-cards',
+    name: '❄️ Заморозить неизученные карточки (очистить очередь до активной темы)',
+    action: async () => {
+      await freezeAllUnstudiedCards(plugin);
+    },
+  });
+
   await plugin.app.registerCommand({
     id: 'activate-note-cards',
     name: '🎯 Активировать карточки этого конспекта (включить в повторение)',
@@ -1623,6 +1715,17 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   // Регистрация команд в меню документа (...)
   try {
+    await plugin.app.registerMenuItem({
+      id: 'menu-freeze-all-unstudied-cards',
+      name: '❄️ Заморозить неизученные карточки (оставить только эту тему)',
+      location: PluginCommandMenuLocation.DocumentMenu,
+      action: async (args: any) => {
+        const remId = args?.remId;
+        const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
+        await freezeAllUnstudiedCards(plugin, rem);
+      },
+    });
+
     await plugin.app.registerMenuItem({
       id: 'menu-activate-note-cards',
       name: '🎯 Активировать карточки конспекта',
