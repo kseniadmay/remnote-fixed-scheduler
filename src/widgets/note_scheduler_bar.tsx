@@ -75,11 +75,13 @@ export const NoteSchedulerBar = () => {
       if (await rem.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
         await rem.removePowerup(BuiltInPowerupCodes.DisableCards);
       }
+      await rem.setEnablePractice(true);
       const descendants = (await rem.getDescendants()) || [];
       for (const ch of descendants) {
         if (await ch.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
           await ch.removePowerup(BuiltInPowerupCodes.DisableCards);
         }
+        await ch.setEnablePractice(true);
       }
 
       // 2. Ставим конспект на 1-й шаг (повторение через 1 день)
@@ -157,11 +159,13 @@ export const NoteSchedulerBar = () => {
       if (await rem.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
         await rem.removePowerup(BuiltInPowerupCodes.DisableCards);
       }
+      await rem.setEnablePractice(true);
       const descendants = (await rem.getDescendants()) || [];
       for (const ch of descendants) {
         if (await ch.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
           await ch.removePowerup(BuiltInPowerupCodes.DisableCards);
         }
+        await ch.setEnablePractice(true);
       }
       await plugin.app.toast(`▶️ Конспект и карточки возобновлены в очередях повторений.`);
     } catch (e) {

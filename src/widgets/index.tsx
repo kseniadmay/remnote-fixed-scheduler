@@ -1258,27 +1258,28 @@ async function onActivate(plugin: ReactRNPlugin) {
       } catch (_) {}
     }
 
-    // 6. Управление спящими карточками для FSRS:
+    // 6. Автоматическая активация карточек конспекта для повторения:
     try {
-      const schedState = (await plugin.storage.getSynced<any>(`note_sched_${target._id}`)) || { stage: 0 };
-      if ((schedState.stage || 0) === 0) {
-        if (await target.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
-          await target.removePowerup(BuiltInPowerupCodes.DisableCards);
-        }
-        for (const entry of entries) {
-          if (!entry.isCard) {
-            let isCard = false;
-            try {
-              const cards = await entry.rem.getCards();
-              isCard = (cards && cards.length > 0) || false;
-            } catch (_) {}
-            if (!isCard) {
-              isCard = entry.text.includes('::') || entry.text.includes('==');
-            }
-            if (isCard) {
-              await entry.rem.addPowerup(BuiltInPowerupCodes.DisableCards);
-            }
+      if (await target.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+        await target.removePowerup(BuiltInPowerupCodes.DisableCards);
+      }
+      for (const entry of entries) {
+        let isCard = entry.isCard;
+        if (!isCard) {
+          try {
+            const cards = await entry.rem.getCards();
+            isCard = (cards && cards.length > 0) || false;
+          } catch (_) {}
+          if (!isCard) {
+            isCard = entry.text.includes('::') || entry.text.includes('==');
           }
+        }
+        if (isCard) {
+          // Разблокируем карточку и включаем её в очередь повторения
+          if (await entry.rem.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+            await entry.rem.removePowerup(BuiltInPowerupCodes.DisableCards);
+          }
+          await entry.rem.setEnablePractice(true);
         }
       }
     } catch (_) {}
@@ -1394,7 +1395,75 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
   }
 
+  // Активация карточек открытого конспекта
+  async function activateNoteCards(plugin: ReactRNPlugin, rootRem?: PluginRem) {
+    const target = rootRem || (await plugin.focus.getFocusedRem());
+    if (!target) {
+      await plugin.app.toast('Откройте конспект для активации карточек');
+      return;
+    }
+    try {
+      if (await target.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+        await target.removePowerup(BuiltInPowerupCodes.DisableCards);
+      }
+      const descendants = (await target.getDescendants()) || [];
+      let count = 0;
+      for (const d of descendants) {
+        if (await d.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+          await d.removePowerup(BuiltInPowerupCodes.DisableCards);
+        }
+        let isCard = false;
+        try {
+          const cards = await d.getCards();
+          isCard = (cards && cards.length > 0) || false;
+        } catch (_) {}
+        if (!isCard) {
+          const text = await plugin.richText.toString(d.text || []);
+          isCard = text.includes('::') || text.includes('==');
+        }
+        if (isCard) {
+          await d.setEnablePractice(true);
+          count++;
+        }
+      }
+
+      // Снимаем паузу с родителей конспекта (например, модуль 01 · Python)
+      try {
+        let curr: PluginRem | undefined = target;
+        while (curr) {
+          if (await curr.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+            await curr.removePowerup(BuiltInPowerupCodes.DisableCards);
+          }
+          if (await curr.hasPowerup(BuiltInPowerupCodes.Deck)) {
+            try {
+              const deckStatus = await curr.getPowerupProperty(BuiltInPowerupCodes.Deck, 's');
+              if (deckStatus === 'Paused' || (Array.isArray(deckStatus) && deckStatus.includes('Paused'))) {
+                await curr.setPowerupProperty(BuiltInPowerupCodes.Deck, 's', ['Exam']);
+              }
+            } catch (_) {}
+          }
+          const parent: PluginRem | undefined = await curr.getParentRem();
+          if (!parent || parent._id === 'LVEtSmkGEevVsDi1b') break;
+          curr = parent;
+        }
+      } catch (_) {}
+
+      const title = (await plugin.richText.toString(target.text || [])).slice(0, 35);
+      await plugin.app.toast(`🎯 Карточки конспекта «${title}» активированы! Включено: ${count}`);
+    } catch (e) {
+      await plugin.app.toast(`Ошибка активации: ${String(e)}`);
+    }
+  }
+
   // Регистрация команд палитры (Ctrl+K)
+  await plugin.app.registerCommand({
+    id: 'activate-note-cards',
+    name: '🎯 Активировать карточки этого конспекта (включить в повторение)',
+    action: async () => {
+      await activateNoteCards(plugin);
+    },
+  });
+
   await plugin.app.registerCommand({
     id: 'tidy-up-note',
     name: '🪄 Причесать конспект(ы) (пакетно для папки или в 1 клик для документа)',
@@ -1445,6 +1514,17 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   // Регистрация команд в меню документа (...)
   try {
+    await plugin.app.registerMenuItem({
+      id: 'menu-activate-note-cards',
+      name: '🎯 Активировать карточки конспекта',
+      location: PluginCommandMenuLocation.DocumentMenu,
+      action: async (args: any) => {
+        const remId = args?.remId;
+        const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
+        if (rem) await activateNoteCards(plugin, rem);
+      },
+    });
+
     await plugin.app.registerMenuItem({
       id: 'menu-tidy-up-note',
       name: '🪄 Причесать конспект(ы) (пакетно / в 1 клик)',
