@@ -1,0 +1,1444 @@
+{
+  "2qKGz3eLKIaIA1SBM": {
+    "noteTitle": "02. Наследование, isinstance() и",
+    "cardThemeId": "99q4uGOA38GbOP8cm",
+    "cardThemeTitle": "ООП Наследование",
+    "reviewCardId": "0SWMWk9hXbqfG5vVa",
+    "cardsRootId": "sM4syuyP3jiIyW3wQ"
+  },
+  "Q96PBMXG3h87BhVXj": {
+    "noteTitle": "07. Инкапсуляция в Python_ уровни доступа и",
+    "cardThemeId": "LohWHsgVS2jiOk9Sg",
+    "cardThemeTitle": "ООП Инкапсуляция",
+    "reviewCardId": "0nVeinZg88xRLbURM",
+    "cardsRootId": "sM4syuyP3jiIyW3wQ"
+  },
+  "d6UkRl1zAUnJiigDz": {
+    "noteTitle": "04. MRO в Python_ порядок разрешения методов",
+    "cardThemeId": "ZhTG4vORXp6OzQnzO",
+    "cardThemeTitle": "ООП MRO",
+    "reviewCardId": "2O1M9dY4hPboLZyBL",
+    "cardsRootId": "94vcJNegR7Zkn4vkF"
+  },
+  "K1MtnPKzsZ87feJ41": {
+    "noteTitle": "06. Магические методы в Python_ обзор",
+    "cardThemeId": "JIH0v1cjvkDyGivw9",
+    "cardThemeTitle": "ООП Магические методы",
+    "reviewCardId": "2WOn6oJoFqPHVPCuH",
+    "cardsRootId": "sM4syuyP3jiIyW3wQ"
+  },
+  "SY6KhbLlE5iHkvb2r": {
+    "noteTitle": "03. Контекстные менеджеры и оператор with в Python",
+    "cardThemeId": "RFCDqFVWiE9WwURsN",
+    "cardThemeTitle": "Контекстный менеджер with",
+    "reviewCardId": "6h84j3WarlDINgI6F",
+    "cardsRootId": "2dt4ITER9Xi9N3nRi"
+  },
+  "CwmCNG0E1g8rQkqzy": {
+    "noteTitle": "02. match-case_ структурное сопоставление с",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "8q29UEwlJcsRAoB9h",
+    "cardsRootId": "83fK3rKhdGzvESelX"
+  },
+  "WwVRrFzalFWyqwqyt": {
+    "noteTitle": "02. map() и filter()_ функциональный стиль",
+    "cardThemeId": "5dQpMF5vYCoRhEWz2",
+    "cardThemeTitle": "Функции map() и filter()",
+    "reviewCardId": "B61zJtkoxamta6HuS",
+    "cardsRootId": "oUGqd4JD5R8UHfcZs"
+  },
+  "cbiv8ZR41TQlTshiK": {
+    "noteTitle": "08. Жизненный цикл объекта_ __init__ и методы",
+    "cardThemeId": "We0Zz1sC6K0bT6oGa",
+    "cardThemeTitle": "ООП Магические методы __init__ и __new__",
+    "reviewCardId": "BBGbsuBfl02atVX24",
+    "cardsRootId": "sM4syuyP3jiIyW3wQ"
+  },
+  "yuJEmxwnaDLGfydMA": {
+    "noteTitle": "05. Декораторы в Python_ механизм и практика",
+    "cardThemeId": "1P8vDafkDiTHYoJVd",
+    "cardThemeTitle": "Декораторы",
+    "reviewCardId": "EQvGFZAkP51Q4N0RL",
+    "cardsRootId": "oUGqd4JD5R8UHfcZs"
+  },
+  "2Iml5nPPl0CWYJ0a2": {
+    "noteTitle": "02. Многопоточность и многопроцессность в",
+    "cardThemeId": "D2pW08vAFUTTWS3fH",
+    "cardThemeTitle": "Многопоточность и многопроцессность",
+    "reviewCardId": "EbmQVWHZwME4uUfWf",
+    "cardsRootId": "ZjyITDnCqUxczGbRl"
+  },
+  "vaoJ2S2arlFbhaoQq": {
+    "noteTitle": "02. Операторы == и is_ равенство и идентичность",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "FfGxkFzvxHcir7UCj",
+    "cardsRootId": "fpq1I32OcIrHwFL1L"
+  },
+  "Zgii73AibfXljoDEk": {
+    "noteTitle": "08. Переменная __name__ и конструкция if",
+    "cardThemeId": "EAicycvX5QDxXbKFf",
+    "cardThemeTitle": "Конструкция __name__ == __main__",
+    "reviewCardId": "LnCcN10NCY7xrhSMK",
+    "cardsRootId": "oUGqd4JD5R8UHfcZs"
+  },
+  "U7Qw3kOplnfgsjDUK": {
+    "noteTitle": "01. self в Python_ как методы знают, с каким",
+    "cardThemeId": "hGHdTxetAuaI7B3dE",
+    "cardThemeTitle": "ООП Ключевое слово self",
+    "reviewCardId": "MNcsDdnJ8AnVRBXPB",
+    "cardsRootId": "sM4syuyP3jiIyW3wQ"
+  },
+  "F0ps4tRJFXTh1wyCW": {
+    "noteTitle": "03. CPU-bound vs I_O-bound_ как тип задачи",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "NSiFKynJCXU9OI8Lt",
+    "cardsRootId": "ZjyITDnCqUxczGbRl"
+  },
+  "PDJA0kBerAOU7sv56": {
+    "noteTitle": "03. Python dataclasses_ автоматическая",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "O736BYjcgm8Hkcn3E",
+    "cardsRootId": "83fK3rKhdGzvESelX"
+  },
+  "x1163atDxPNXhUCk9": {
+    "noteTitle": "01. Регулярные выражения в Python_ модуль re",
+    "cardThemeId": "MtAueY1DtLeNAPRFC",
+    "cardThemeTitle": "Модуль collections",
+    "reviewCardId": "Piw91MqZkRsQdWj6b",
+    "cardsRootId": "pOZXN4a4srAZ6FvqO"
+  },
+  "JNj5Qza0pfhSxyL2y": {
+    "noteTitle": "03. copy и deepcopy_ поверхностное и",
+    "cardThemeId": "ThRgDf6hACIHUwDw8",
+    "cardThemeTitle": "Глубокое и поверхностное копирование",
+    "reviewCardId": "QF6la9gdDbTluTLHe",
+    "cardsRootId": "fpq1I32OcIrHwFL1L"
+  },
+  "wtC5wcFNPIPbuiasa": {
+    "noteTitle": "06. asyncio_ корутины, event loop и async_await",
+    "cardThemeId": "Z90eSLf0qagK2aeTE",
+    "cardThemeTitle": "Модуль asyncio, asyncawait, корутины и event",
+    "reviewCardId": "RH1W3TeoZzn8tiWZA",
+    "cardsRootId": "ZjyITDnCqUxczGbRl"
+  },
+  "hyutAEK9ZwuRmErzM": {
+    "noteTitle": "04. Основы асинхронного программирования и",
+    "cardThemeId": "zIwBi2uuA5W0K0xpj",
+    "cardThemeTitle": "Пример синхронного и асинхронного кода",
+    "reviewCardId": "UHILxWDgoOBLRZM5o",
+    "cardsRootId": "ZjyITDnCqUxczGbRl"
+  },
+  "P3umQumNTFENOM07s": {
+    "noteTitle": "04. __str__ и __repr___ два представления",
+    "cardThemeId": "TUQEHbvs7tHcTUI7d",
+    "cardThemeTitle": "ООП Разница между __str__ и __repr__",
+    "reviewCardId": "VwZ8AUDw1DAOawFE0",
+    "cardsRootId": "sM4syuyP3jiIyW3wQ"
+  },
+  "zYbKJigXRe1TGAGRY": {
+    "noteTitle": "04. Docstrings в Python",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "WuZlt0Mh0aXjefv2V",
+    "cardsRootId": "83fK3rKhdGzvESelX"
+  },
+  "caTDF2WkoqZ58n4BI": {
+    "noteTitle": "05. Синхронный и асинхронный код в Python_",
+    "cardThemeId": "YGDu2focl1Ll0OCCO",
+    "cardThemeTitle": "Синхронный и асинхронный код",
+    "reviewCardId": "Y2yXe3OBNjLYmWsY4",
+    "cardsRootId": "ZjyITDnCqUxczGbRl"
+  },
+  "YK4ep8asSdi0VLm4g": {
+    "noteTitle": "01. Миксины и множественное наследование_",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "YQA3g7hYdzWe5fobp",
+    "cardsRootId": "94vcJNegR7Zkn4vkF"
+  },
+  "ZY7seKlRiK2HczdtW": {
+    "noteTitle": "07. Ловушка изменяемых аргументов по умолчанию",
+    "cardThemeId": "DAIxcTYxGcRQnTIyr",
+    "cardThemeTitle": "Механизмы передачи аргументов",
+    "reviewCardId": "Z3ewXlHg7p23lO2KI",
+    "cardsRootId": "oUGqd4JD5R8UHfcZs"
+  },
+  "beidLsRxRSHyXUR7S": {
+    "noteTitle": "05. Dunder-методы в Python_ перегрузка",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "aNl669f49fwJBeVyf",
+    "cardsRootId": "sM4syuyP3jiIyW3wQ"
+  },
+  "XKvayzYWRnBBuq8sp": {
+    "noteTitle": "03. Замыкания в Python_ как функция",
+    "cardThemeId": "t1FPsAOBn0dM4EOC4",
+    "cardThemeTitle": "Лямбда-функция",
+    "reviewCardId": "birKwvePqn4lnZNhs",
+    "cardsRootId": "oUGqd4JD5R8UHfcZs"
+  },
+  "AKiQ9EfqE3Bnp1PsS": {
+    "noteTitle": "05. Управление памятью в Python",
+    "cardThemeId": "iomDe3SnYgDrCIvgo",
+    "cardThemeTitle": "Управление памятью в Python",
+    "reviewCardId": "eRy6AgjC3dc2MtDZ3",
+    "cardsRootId": "fpq1I32OcIrHwFL1L"
+  },
+  "rOPmY3i8Z61qBCJ57": {
+    "noteTitle": "01. Продвинутая типизация_ Protocol, Generic",
+    "cardThemeId": "aGiTECtLp3m4WlLH4",
+    "cardThemeTitle": "Статическая типизация",
+    "reviewCardId": "gXqB2MrA5Ygelcjlg",
+    "cardsRootId": "83fK3rKhdGzvESelX"
+  },
+  "2ZTSXcyUtFpO3jXdJ": {
+    "noteTitle": "05. super() в Python_ делегирование",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "hhx92NXQHYNzLy5cD",
+    "cardsRootId": "94vcJNegR7Zkn4vkF"
+  },
+  "RuGIjP9gQVyc1oNMU": {
+    "noteTitle": "01. Исключения в Python_ иерархия и",
+    "cardThemeId": "xoj5IhPKr4pQZDqyo",
+    "cardThemeTitle": "Иерархия исключений",
+    "reviewCardId": "l7RRFGAMod4W9Ehaj",
+    "cardsRootId": "fpq1I32OcIrHwFL1L"
+  },
+  "BK63hqIN8zsmfZBrs": {
+    "noteTitle": "02. @classmethod, @staticmethod, @property_",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "mgbJrMtUx8X2GeP46",
+    "cardsRootId": "94vcJNegR7Zkn4vkF"
+  },
+  "pbcvqMOBXBoXLKN1J": {
+    "noteTitle": "04. global и nonlocal в Python_ область",
+    "cardThemeId": "lGAhXYjNPaTCos40C",
+    "cardThemeTitle": "Области видимости переменных global и nonloca",
+    "reviewCardId": "nE5x7CjmWcU93Tcj4",
+    "cardsRootId": "oUGqd4JD5R8UHfcZs"
+  },
+  "NagjKaBtcaL5isRob": {
+    "noteTitle": "01. asyncio в деталях_ gather, create_task и",
+    "cardThemeId": "Z90eSLf0qagK2aeTE",
+    "cardThemeTitle": "Модуль asyncio, asyncawait, корутины и event",
+    "reviewCardId": "nLparlLEXUluCeqlx",
+    "cardsRootId": "ZjyITDnCqUxczGbRl"
+  },
+  "rpetNInDbdTPgNqOS": {
+    "noteTitle": "04. Reference Counting",
+    "cardThemeId": "eiETRfr6JWTtGHWQk",
+    "cardThemeTitle": "Сборщик мусора и reference counting",
+    "reviewCardId": "ncRARLfVhMIGmz84s",
+    "cardsRootId": "fpq1I32OcIrHwFL1L"
+  },
+  "W6tVJTbdBtV5yFHRT": {
+    "noteTitle": "07. __dict__ и __slots___ как Python хранит",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "o8EoqQqXaFEzfLDyF",
+    "cardsRootId": "94vcJNegR7Zkn4vkF"
+  },
+  "wCOitGbcp7uuarBu5": {
+    "noteTitle": "03. Дескрипторы в Python_ __get__, __set__ и",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "qDGMxCj0kkn353Nd4",
+    "cardsRootId": "94vcJNegR7Zkn4vkF"
+  },
+  "oDvVKpg7a5oarDcl8": {
+    "noteTitle": "06. Метаклассы в Python_ классы для классов",
+    "cardThemeId": "zSVLocuCli4ONBDR4",
+    "cardThemeTitle": "ООП Метаклассы",
+    "reviewCardId": "reym4k0uaAvdGRyPF",
+    "cardsRootId": "94vcJNegR7Zkn4vkF"
+  },
+  "MlwkEH6zezxsQ4piC": {
+    "noteTitle": "06. Модуль functools_ кеширование, частичное",
+    "cardThemeId": "odRNl6JEsR6muGhvv",
+    "cardThemeTitle": "Модуль functools",
+    "reviewCardId": "tHqtkBfnr9oX7DWDD",
+    "cardsRootId": "oUGqd4JD5R8UHfcZs"
+  },
+  "zKOaTYoKnagJ2yu0y": {
+    "noteTitle": "03. __new__ и __init___ два этапа создания",
+    "cardThemeId": "We0Zz1sC6K0bT6oGa",
+    "cardThemeTitle": "ООП Магические методы __init__ и __new__",
+    "reviewCardId": "y10pkigdZLteARFWN",
+    "cardsRootId": "sM4syuyP3jiIyW3wQ"
+  },
+  "ptcs7dzMYtdE4HZu9": {
+    "noteTitle": "03. Проектирование REST API_ ресурсы,",
+    "cardThemeId": "EBNrJHTmkSbUBvh88",
+    "cardThemeTitle": "Принципы REST",
+    "reviewCardId": "01VxI6PJWG6nTz7ro",
+    "cardsRootId": "TfzNucai6cKOEPlal"
+  },
+  "kyDlTjVZZNjg4klbw": {
+    "noteTitle": "03. Рекурсия_ декомпозиция и управление сложностью",
+    "cardThemeId": "IeyoMiLXSZdrLilex",
+    "cardThemeTitle": "Алгоритмы Рекурсия и рекурсивное мышление",
+    "reviewCardId": "0sW0dQSAfO4tI2qNq",
+    "cardsRootId": "fnwgQMThjMAtUEfDT"
+  },
+  "qxqMDobDsMvJ8nNNX": {
+    "noteTitle": "02. Django базово_ views, urls, templates, forms",
+    "cardThemeId": "ejslitY6j0fDPgdt3",
+    "cardThemeTitle": "models, views, urls, templates, forms",
+    "reviewCardId": "2HEha8eVyjAT9DK4C",
+    "cardsRootId": "FQKzyrbZI80IHUTS3"
+  },
+  "XgqNe2uflqGAa13Zn": {
+    "noteTitle": "04. SQL-инъекции_ механика атаки и защита",
+    "cardThemeId": "F8HxfBUjS7sJtPGmb",
+    "cardThemeTitle": "SQL инъекции",
+    "reviewCardId": "3JgMWRlSBdXCzGgi6",
+    "cardsRootId": "pIP2UHNAB1CPpALI9"
+  },
+  "rU1JjReW5LSlgY6Ij": {
+    "noteTitle": "02. Два указателя и скользящее окно",
+    "cardThemeId": "aJozYX7JAsKg0iXzC",
+    "cardThemeTitle": "Алгоритмы Два указателя, скользящее окно",
+    "reviewCardId": "3cuhL1qSFFIrVPyFM",
+    "cardsRootId": "M1ydZJLo8J0ArRBq9"
+  },
+  "L9VX7BVHl7QLgkWOB": {
+    "noteTitle": "04. Динамическое программирование_",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "4rP0sdoAgxhs701jU",
+    "cardsRootId": "fnwgQMThjMAtUEfDT"
+  },
+  "LioYDX1FQbUspKxFW": {
+    "noteTitle": "12. Денормализация данных",
+    "cardThemeId": "EO8HjsYOJ0YVkGzIY",
+    "cardThemeTitle": "Оптимизация Денормализация",
+    "reviewCardId": "6gfVDt2c8qkGdDeqi",
+    "cardsRootId": "xBo6Lu5eKr27LUFuS"
+  },
+  "SHFUo3lm5i9lsNuFD": {
+    "noteTitle": "09. Оконные функции_ ROW_NUMBER, RANK, DENSE_RANK",
+    "cardThemeId": "VW45W7fRaHQFC2vOY",
+    "cardThemeTitle": "SQL Оконные функции ROW_NUMBER, RANK, PARTITI",
+    "reviewCardId": "6pFlnaDxZqfvCvPZD",
+    "cardsRootId": "81vbEzUNJ7vZxnL1X"
+  },
+  "kcDeXjjALzjRrP5J7": {
+    "noteTitle": "03. WHERE и HAVING_ фильтрация строк и групп",
+    "cardThemeId": "CnLuH9KU8ELNdJsWg",
+    "cardThemeTitle": "SQL SELECT, WHERE, ORDER BY, LIMIT",
+    "reviewCardId": "6rPWKaniQM5NstxoJ",
+    "cardsRootId": "eZFGWX9zmM31aCSow"
+  },
+  "8cdkGDgoxZTQimU0r": {
+    "noteTitle": "06. Шардирование и репликация базы данных",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "7nEwwgQilPKa6ztIy",
+    "cardsRootId": "rpKWxbRD46uH58Njx"
+  },
+  "BV1LEyQ663UTx5kFE": {
+    "noteTitle": "03. Устройство языка Python_ CPython,",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "8Ysbj1Qif2yJM3FKb",
+    "cardsRootId": "pOZXN4a4srAZ6FvqO"
+  },
+  "kawFT3UcLZpwJ7DCR": {
+    "noteTitle": "01. HTTP-методы_ GET, POST, PUT, PATCH,",
+    "cardThemeId": "QYD3maKM5zW11yKCb",
+    "cardThemeTitle": "HTTP1.1 vs HTTP2",
+    "reviewCardId": "8Ysur8bYHlqL0hBY6",
+    "cardsRootId": "kIu84cuaTTurzrmIf"
+  },
+  "LrCgzfhBSM1DRDCnB": {
+    "noteTitle": "01. Flask-SQLAlchemy_ работа с базой данных",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "8nULpxprhICuv7FxH",
+    "cardsRootId": "dCzG67pEaCW1HKa2x"
+  },
+  "fE5Hb2WBXtD5r7Duu": {
+    "noteTitle": "03. HTTP-заголовки_ метаданные запросов и ответов",
+    "cardThemeId": "FqLxMdSXtx8tNhLZB",
+    "cardThemeTitle": "Коды ответов",
+    "reviewCardId": "9N0FUgzowGvXx1lNF",
+    "cardsRootId": "kIu84cuaTTurzrmIf"
+  },
+  "Q4DdbGxHUK6me07rr": {
+    "noteTitle": "01. SQLAlchemy_ ORM для Python",
+    "cardThemeId": "IxAfYYLQdhyKl2ndO",
+    "cardThemeTitle": "ORM SQLAlchemy модели, сессии, запросы",
+    "reviewCardId": "BmRVFP2axEsAvzpkJ",
+    "cardsRootId": "C9m2Fabu6FddZBMLy"
+  },
+  "9GY1FawWC1Qaak93P": {
+    "noteTitle": "05. Разница между модулем и пакетом в Python",
+    "cardThemeId": "jGSn3r9pPQ34l6D4D",
+    "cardThemeTitle": "Разница между модулем и пакетом",
+    "reviewCardId": "BqmHqmyN2VMgWl2un",
+    "cardsRootId": "pOZXN4a4srAZ6FvqO"
+  },
+  "mn8sVA2o3xe1nj5Xo": {
+    "noteTitle": "02. FastAPI базово_ path-операции,",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "Db0SEIlxGw6Uy1HYc",
+    "cardsRootId": "dCzG67pEaCW1HKa2x"
+  },
+  "lO7ReYo6oHLTn24xa": {
+    "noteTitle": "01. CORS_ основы и настройка",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "EJ0TDJr1cXtYXuY65",
+    "cardsRootId": "pIP2UHNAB1CPpALI9"
+  },
+  "q2auuUsjgrzdn91Mg": {
+    "noteTitle": "02. Сериализация и десериализация_ json и pickle",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "FYf9H468sbvjQUkTX",
+    "cardsRootId": "pOZXN4a4srAZ6FvqO"
+  },
+  "gxrieMZP7FYm0sJ1b": {
+    "noteTitle": "01. Big O_ временная и пространственная сложность",
+    "cardThemeId": "MWdOGITOCaso0tCJz",
+    "cardThemeTitle": "Сложность Временная и пространственная сложно",
+    "reviewCardId": "FsPROEAXDmzykIzC4",
+    "cardsRootId": "V4tdkvmdJOYrbWu24"
+  },
+  "mt3QlQqiGp5lthX0J": {
+    "noteTitle": "04. Django QuerySet_ ленивость и фильтрация",
+    "cardThemeId": "xiewaCSyGrW9H7asB",
+    "cardThemeTitle": "Celery + Django",
+    "reviewCardId": "IYQTVR8TIRfzwl5oX",
+    "cardsRootId": "FQKzyrbZI80IHUTS3"
+  },
+  "LEJqVDwWgkbDc0b13": {
+    "noteTitle": "14. Типы связей между таблицами_ 1_1, 1_M, M_M",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "L2ueNXa9h7SjQg5yr",
+    "cardsRootId": "xBo6Lu5eKr27LUFuS"
+  },
+  "zSzu43OyLjieceOFD": {
+    "noteTitle": "03. Сессии vs JWT_ где хранится состояние",
+    "cardThemeId": "IKGFJ2Y6MwnXzD0bW",
+    "cardThemeTitle": "Сессии vs токены",
+    "reviewCardId": "NrOYom2cgubMTzIf4",
+    "cardsRootId": "tCNY2fpCvc6G7KQk3"
+  },
+  "MzxHaU4nPoXvxNfai": {
+    "noteTitle": "08. WSGI vs ASGI_ как Python-приложение",
+    "cardThemeId": "QYD3maKM5zW11yKCb",
+    "cardThemeTitle": "HTTP1.1 vs HTTP2",
+    "reviewCardId": "O5vnnzw4LZykVV8rE",
+    "cardsRootId": "kIu84cuaTTurzrmIf"
+  },
+  "fnxzf7NBzK8f9xyjN": {
+    "noteTitle": "15. Ограничения SQL_ NOT NULL, UNIQUE,",
+    "cardThemeId": "az2dZxN7W0YEm9Uwh",
+    "cardThemeTitle": "Проектирование БД Уникальные ограничения, NOT",
+    "reviewCardId": "OKU91ShDTqXZtShKh",
+    "cardsRootId": "xBo6Lu5eKr27LUFuS"
+  },
+  "mdFvrn3QsFkW8XRvj": {
+    "noteTitle": "04. HTTPS, TLS и SSL_ как работает",
+    "cardThemeId": "BQ2HAv3maDJltK4Ab",
+    "cardThemeTitle": "HTTPS, TLSSSL",
+    "reviewCardId": "OXEfMJMbMVtNgS3Mr",
+    "cardsRootId": "kIu84cuaTTurzrmIf"
+  },
+  "xfCLnCFHtbDEmVvBf": {
+    "noteTitle": "07. Flask базово_ маршруты, request,",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "PMMDbEVCPkSiNxyGY",
+    "cardsRootId": "dCzG67pEaCW1HKa2x"
+  },
+  "hO7pav5eodbFRcGJx": {
+    "noteTitle": "05. RBAC_ Role-Based Access Control –",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "PUKEN8YTiS2YjxIo9",
+    "cardsRootId": "tCNY2fpCvc6G7KQk3"
+  },
+  "nmw2gV8tNl5dCC4EY": {
+    "noteTitle": "01. Связные списки_ узлы и указатели",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "PdfmTApoD9kmazXJA",
+    "cardsRootId": "KcbTXmcRjqIMIwade"
+  },
+  "XYvlPEMA90InwBBN6": {
+    "noteTitle": "08. Flask Blueprint_ модульная архитектура",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "Po5Fh9Qm2DzjT6578",
+    "cardsRootId": "dCzG67pEaCW1HKa2x"
+  },
+  "IJyX4UCDSGh8LoY7t": {
+    "noteTitle": "06. Хранение паролей_ хеширование, соль и",
+    "cardThemeId": "dFRGqdbikIoMVg8jg",
+    "cardThemeTitle": "Хэширование паролей (bcrypt, hashlib)",
+    "reviewCardId": "Q2uqvs0RHwdNPqyIl",
+    "cardsRootId": "tCNY2fpCvc6G7KQk3"
+  },
+  "3BXc3wrcrRMMWUQlK": {
+    "noteTitle": "04. APIRouter_ организация кода в FastAPI",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "Q5O8CxyI3LP8aQ6BP",
+    "cardsRootId": "dCzG67pEaCW1HKa2x"
+  },
+  "WjsgRlfLniSIsOCXf": {
+    "noteTitle": "09. Контексты Flask_ как работают request и g",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "QQv0M2Cq4WQb8jQnP",
+    "cardsRootId": "dCzG67pEaCW1HKa2x"
+  },
+  "gZjNqUpnzlG5fTs6s": {
+    "noteTitle": "01. JWT_ анатомия токена и практика безопасности",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "RelIF274Wn3fe5SvX",
+    "cardsRootId": "tCNY2fpCvc6G7KQk3"
+  },
+  "7Jh8KRv3pKH1BxhEZ": {
+    "noteTitle": "02. REST и GraphQL",
+    "cardThemeId": "EBNrJHTmkSbUBvh88",
+    "cardThemeTitle": "Принципы REST",
+    "reviewCardId": "TzEJ6E3uhkvlr28Vv",
+    "cardsRootId": "TfzNucai6cKOEPlal"
+  },
+  "CjwZ39q7aR4185vBa": {
+    "noteTitle": "02. Алгоритмы сортировки",
+    "cardThemeId": "8sgBS807xDbaWjoRp",
+    "cardThemeTitle": "Алгоритмы Сортировки",
+    "reviewCardId": "UNwlT9fix5RmsAN3Y",
+    "cardsRootId": "fnwgQMThjMAtUEfDT"
+  },
+  "DAF1sX58ctms0mIsg": {
+    "noteTitle": "05. Stateful vs Stateless_ где хранится",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "UPppnHwGMKIvWhUoU",
+    "cardsRootId": "pIP2UHNAB1CPpALI9"
+  },
+  "JSXHLCTa2FU33hdLU": {
+    "noteTitle": "05. EXPLAIN_ как читать план выполнения запроса",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "VUdZrATPL3Ud9Y5a9",
+    "cardsRootId": "rpKWxbRD46uH58Njx"
+  },
+  "LWKW7ysTAwvfN54pL": {
+    "noteTitle": "06. Rate Limiting и throttling_ ограничение",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "Vaq4nP86LeMeMFZeB",
+    "cardsRootId": "pIP2UHNAB1CPpALI9"
+  },
+  "SIoEBTspjpNtRVNjr": {
+    "noteTitle": "02. HTTP-статус коды_ язык сервера",
+    "cardThemeId": "FqLxMdSXtx8tNhLZB",
+    "cardThemeTitle": "Коды ответов",
+    "reviewCardId": "VqSuEZTz7vdrcBl32",
+    "cardsRootId": "kIu84cuaTTurzrmIf"
+  },
+  "b9Aqkdxfsegfd0O0Q": {
+    "noteTitle": "01. Структуры данных графа",
+    "cardThemeId": "O6KqJdhY7SInXPtI7",
+    "cardThemeTitle": "Cтруктуры данных Граф",
+    "reviewCardId": "WBM3D5vUFpC7fKQtP",
+    "cardsRootId": "hSO9RRTRUegnt8bXz"
+  },
+  "ZwMHO4K4LKja9hFYs": {
+    "noteTitle": "01. Бинарный поиск",
+    "cardThemeId": "vP22FLWauZHreYnBS",
+    "cardThemeTitle": "Алгоритмы Бинарный поиск",
+    "reviewCardId": "WKtJWYCcPoozVyF6e",
+    "cardsRootId": "fnwgQMThjMAtUEfDT"
+  },
+  "zGhyIWKYHPOQddLsf": {
+    "noteTitle": "13. Первичные и внешние ключи_ целостность данных",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "X6hLJVibKPqSVxsVa",
+    "cardsRootId": "xBo6Lu5eKr27LUFuS"
+  },
+  "YXCiT5sUs4fi5NblF": {
+    "noteTitle": "04. API-ключи_ генерация, хранение и безопасность",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "XQ3ukiD8pqYofSgUN",
+    "cardsRootId": "tCNY2fpCvc6G7KQk3"
+  },
+  "fob7xDZipg3p8YM8q": {
+    "noteTitle": "06. INSERT, UPDATE, DELETE, TRUNCATE_",
+    "cardThemeId": "PPOUqOSa0HZdq88Gy",
+    "cardThemeTitle": "SQL INSERT, UPDATE, DELETE",
+    "reviewCardId": "XQCeAkZqrVXTqsbUY",
+    "cardsRootId": "eZFGWX9zmM31aCSow"
+  },
+  "lypgPT9g4TpPgWVED": {
+    "noteTitle": "02. CSRF_ механизм атаки и защита",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "YLqu2pkMR8y9WMFZb",
+    "cardsRootId": "pIP2UHNAB1CPpALI9"
+  },
+  "rFBzTTmPENXrFCzTe": {
+    "noteTitle": "04. SQL JOIN_ объединение таблиц",
+    "cardThemeId": "0ycXTJtMrzmeKYJdS",
+    "cardThemeTitle": "SQL JOIN INNER, LEFT, RIGHT, FULL, CROSS",
+    "reviewCardId": "aBnDdxFPiFu79abmx",
+    "cardsRootId": "eZFGWX9zmM31aCSow"
+  },
+  "RHgUFblaqaUXmdFKq": {
+    "noteTitle": "05. Dependency Injection в FastAPI",
+    "cardThemeId": "73iswSy7kBPQiMdsT",
+    "cardThemeTitle": "Dependency Injection",
+    "reviewCardId": "buVx9L4gAUbms8n7t",
+    "cardsRootId": "dCzG67pEaCW1HKa2x"
+  },
+  "RtKrDNuWiSM26Gf8F": {
+    "noteTitle": "04. Версионирование API, Deprecation и Sunset",
+    "cardThemeId": "NCAh9ioEw81iaUBTs",
+    "cardThemeTitle": "Версионирование API",
+    "reviewCardId": "bvKAGcw4r7kQ3hIlv",
+    "cardsRootId": "TfzNucai6cKOEPlal"
+  },
+  "TwhsoAx6xQHzB3tUE": {
+    "noteTitle": "07. Идемпотентность_ почему повторный запрос",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "dVKPiX3oyZEfzjniA",
+    "cardsRootId": "TfzNucai6cKOEPlal"
+  },
+  "H4MoLSIbw1cRMLFTn": {
+    "noteTitle": "08. Проблема N+1 и её решение в Django",
+    "cardThemeId": "xiewaCSyGrW9H7asB",
+    "cardThemeTitle": "Celery + Django",
+    "reviewCardId": "dZKYkYzNAXNIGLswt",
+    "cardsRootId": "FQKzyrbZI80IHUTS3"
+  },
+  "CZkJ3syaHJ7rnQndv": {
+    "noteTitle": "05. DDL_ жизненный цикл таблицы",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "dki6Bq0qdsuqW4kTP",
+    "cardsRootId": "eZFGWX9zmM31aCSow"
+  },
+  "kou522qxGOYbEKxci": {
+    "noteTitle": "03. Django REST Framework_ от модели до API",
+    "cardThemeId": "cvKrEI20fbxnwkr5w",
+    "cardThemeTitle": "Pydantic модели",
+    "reviewCardId": "eCx10ZUfWTnEQvfHS",
+    "cardsRootId": "dCzG67pEaCW1HKa2x"
+  },
+  "qKU1kwS2GPY4OYgTg": {
+    "noteTitle": "03. XSS_ межсайтовый скриптинг – механика и защита",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "ekH0Xz7UYJc2FItZA",
+    "cardsRootId": "pIP2UHNAB1CPpALI9"
+  },
+  "KV6rhOIurDVqlRMTr": {
+    "noteTitle": "03. Alembic_ миграции для SQLAlchemy",
+    "cardThemeId": "IxAfYYLQdhyKl2ndO",
+    "cardThemeTitle": "ORM SQLAlchemy модели, сессии, запросы",
+    "reviewCardId": "fMdlcumFKD6kkTq39",
+    "cardsRootId": "C9m2Fabu6FddZBMLy"
+  },
+  "c7a9bODR0hl74ono4": {
+    "noteTitle": "02. SQL-запрос_ синтаксис и порядок выполнения",
+    "cardThemeId": "0ycXTJtMrzmeKYJdS",
+    "cardThemeTitle": "SQL JOIN INNER, LEFT, RIGHT, FULL, CROSS",
+    "reviewCardId": "fQzCxUHdZlkt3klte",
+    "cardsRootId": "eZFGWX9zmM31aCSow"
+  },
+  "Sswji3g2DiXUf5E5c": {
+    "noteTitle": "01. ACID_ гарантии надёжности данных",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "g38zQJMxXkCXEDufR",
+    "cardsRootId": "rpKWxbRD46uH58Njx"
+  },
+  "QCSfjiNk504MPTSGb": {
+    "noteTitle": "05. Django Admin_ архитектура и настройка",
+    "cardThemeId": "jQIBEWRQqzredbkcG",
+    "cardThemeTitle": "MTV архитектура",
+    "reviewCardId": "g65fRpM8SPgOZzkjE",
+    "cardsRootId": "FQKzyrbZI80IHUTS3"
+  },
+  "4VUg2xrrAilGWs5Gd": {
+    "noteTitle": "06. Middleware в Django_ обработка запросов",
+    "cardThemeId": "L0o98w2iwzX3rBfSa",
+    "cardThemeTitle": "Middleware",
+    "reviewCardId": "gxLuvvPUa3ubJhM0k",
+    "cardsRootId": "FQKzyrbZI80IHUTS3"
+  },
+  "SIebE5sypMYUc77rB": {
+    "noteTitle": "01. REST_ архитектурные ограничения и их",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "hk6dhaAT9VEgOJJOI",
+    "cardsRootId": "TfzNucai6cKOEPlal"
+  },
+  "B4SFKkNLEWnxhJks6": {
+    "noteTitle": "06. Асинхронность в FastAPI_ Event Loop и",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "idpjxdlNKQr7tHRiA",
+    "cardsRootId": "dCzG67pEaCW1HKa2x"
+  },
+  "SiyR3dOz4kD7Ls8oX": {
+    "noteTitle": "07. Жизненный цикл запроса в Django",
+    "cardThemeId": "xiewaCSyGrW9H7asB",
+    "cardThemeTitle": "Celery + Django",
+    "reviewCardId": "jDhip1N4unUYlGZKV",
+    "cardsRootId": "FQKzyrbZI80IHUTS3"
+  },
+  "UWeanMiyZYQPVxQtM": {
+    "noteTitle": "03. MVC и Django MTV",
+    "cardThemeId": "jQIBEWRQqzredbkcG",
+    "cardThemeTitle": "MTV архитектура",
+    "reviewCardId": "kwFheS1cY10Seq8US",
+    "cardsRootId": "FQKzyrbZI80IHUTS3"
+  },
+  "O4ow4RV978ELnGeO2": {
+    "noteTitle": "06. PEP 8_ руководство по стилю кода Python",
+    "cardThemeId": "7hlJDD8ZleofvriNG",
+    "cardThemeTitle": "PEP 8",
+    "reviewCardId": "lwNJMdfEGCEO3vOYi",
+    "cardsRootId": "pOZXN4a4srAZ6FvqO"
+  },
+  "vMO3HZOJnacNe2ZNo": {
+    "noteTitle": "07. Виртуальные окружения и управление",
+    "cardThemeId": "2eHFRctCtQne8TARF",
+    "cardThemeTitle": "Виртуальные окружения",
+    "reviewCardId": "m6ODHTueUfBuWLCcI",
+    "cardsRootId": "pOZXN4a4srAZ6FvqO"
+  },
+  "CRDHOhWgIvi274LLi": {
+    "noteTitle": "05. OpenAPI и Swagger_ документация API как код",
+    "cardThemeId": "W5amWgmrwJcw0l3BI",
+    "cardThemeTitle": "Документация Swagger OpenAPI",
+    "reviewCardId": "naGenBaesNEBa8r8B",
+    "cardsRootId": "TfzNucai6cKOEPlal"
+  },
+  "2g8w9gu5em8z0FfKu": {
+    "noteTitle": "02. OAuth 2.0 и OpenID Connect_ авторизация",
+    "cardThemeId": "K01YLLyBoJLYLp0AE",
+    "cardThemeTitle": "OAuth 2.0",
+    "reviewCardId": "niQcwFuT333TYJ3oj",
+    "cardsRootId": "tCNY2fpCvc6G7KQk3"
+  },
+  "8UHuhjRYf8UcW1XYO": {
+    "noteTitle": "04. PostgreSQL против MySQL",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "oFhAjnrcIb9ZXPsfl",
+    "cardsRootId": "C9m2Fabu6FddZBMLy"
+  },
+  "Xj3cBAs995Gm9i0s8": {
+    "noteTitle": "05. HTTP_1.1 vs HTTP_2_ мультиплексирование",
+    "cardThemeId": "QYD3maKM5zW11yKCb",
+    "cardThemeTitle": "HTTP1.1 vs HTTP2",
+    "reviewCardId": "p2DMmsGzUbUKzUggD",
+    "cardsRootId": "kIu84cuaTTurzrmIf"
+  },
+  "xzWqrT6mNG8nDyJ1G": {
+    "noteTitle": "03. Дедлоки в базе данных",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "pr2mnlZrtdNnxtEoo",
+    "cardsRootId": "rpKWxbRD46uH58Njx"
+  },
+  "9Wl07WRqfuheLow9t": {
+    "noteTitle": "01. Деревья_ иерархические структуры данных",
+    "cardThemeId": "MTZ0o5y1CIouKquqw",
+    "cardThemeTitle": "Cтруктуры данных Хэш-таблица",
+    "reviewCardId": "q4MoDDxZtmdsKKlZe",
+    "cardsRootId": "h86j7km1PPpr6oBte"
+  },
+  "MuVo0pBVOwUPL1Wfh": {
+    "noteTitle": "04. Индексы в базах данных",
+    "cardThemeId": "EzMTNhHJzfSpgfpa2",
+    "cardThemeTitle": "Оптимизация Индексы что такое, виды, когда по",
+    "reviewCardId": "qQyCCXln3CPeQpxcw",
+    "cardsRootId": "rpKWxbRD46uH58Njx"
+  },
+  "UMkdgbthLpwdjI162": {
+    "noteTitle": "08. Агрегатные функции и GROUP BY",
+    "cardThemeId": "VW45W7fRaHQFC2vOY",
+    "cardThemeTitle": "SQL Оконные функции ROW_NUMBER, RANK, PARTITI",
+    "reviewCardId": "r6ENvcFOI5471PmKz",
+    "cardsRootId": "81vbEzUNJ7vZxnL1X"
+  },
+  "fXocJBX8Lr2CKeorL": {
+    "noteTitle": "03. Хэш-таблица_ как работает мгновенный поиск",
+    "cardThemeId": "MTZ0o5y1CIouKquqw",
+    "cardThemeTitle": "Cтруктуры данных Хэш-таблица",
+    "reviewCardId": "rjKW93RGoJLhK6m3t",
+    "cardsRootId": "h86j7km1PPpr6oBte"
+  },
+  "97gbXY141SitNOhvf": {
+    "noteTitle": "01. Сигналы Django и паттерн Pub_Sub",
+    "cardThemeId": "jMViB4DOGB6VHTaNb",
+    "cardThemeTitle": "Сигналы",
+    "reviewCardId": "sgA1qxiMzunz8dn06",
+    "cardsRootId": "FQKzyrbZI80IHUTS3"
+  },
+  "SM9TdcQKKLULvWwBm": {
+    "noteTitle": "02. Миграции базы данных",
+    "cardThemeId": "cnLA57tx9NcEeEj9x",
+    "cardThemeTitle": "ORM Миграции",
+    "reviewCardId": "tGSsAQcShEX5HgxmQ",
+    "cardsRootId": "C9m2Fabu6FddZBMLy"
+  },
+  "AdMzSEDybD6Qp6xWP": {
+    "noteTitle": "06. Cookies и сессии_ как HTTP запоминает",
+    "cardThemeId": "1EGb5WzUMn8HkbJ29",
+    "cardThemeTitle": "Cookies и сессии",
+    "reviewCardId": "tzJjnXc1OTgVUDhrB",
+    "cardsRootId": "kIu84cuaTTurzrmIf"
+  },
+  "gb3D5upYxCW8FOxTT": {
+    "noteTitle": "02. DFS и BFS_ алгоритмы обхода графов",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "uapxYrqK1ohil7pex",
+    "cardsRootId": "hSO9RRTRUegnt8bXz"
+  },
+  "5Bzh8WUOdvq9LyAun": {
+    "noteTitle": "10. UNION и UNION ALL_ объединение",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "vJVCaZMectzgOPTAv",
+    "cardsRootId": "81vbEzUNJ7vZxnL1X"
+  },
+  "monL3lUP1X1XcWlp8": {
+    "noteTitle": "07. Подзапросы и CTE в SQL",
+    "cardThemeId": "6FDtSPxHTNjx3rOMQ",
+    "cardThemeTitle": "SQL Подзапросы",
+    "reviewCardId": "vKV3nwQ7tW5txBiR3",
+    "cardsRootId": "81vbEzUNJ7vZxnL1X"
+  },
+  "m1Jl0GoRqSiuTQ5Lw": {
+    "noteTitle": "04. Модули и пакеты в Python_ организация кода",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "vbFpHDnRW5ggNFU8X",
+    "cardsRootId": "pOZXN4a4srAZ6FvqO"
+  },
+  "r7uVd4k9eczxDXnuI": {
+    "noteTitle": "02. Стек, очередь и дек",
+    "cardThemeId": "acKuJ09NgE1gRG3wR",
+    "cardThemeTitle": "Cтруктуры данных Стек, очередь, дек",
+    "reviewCardId": "veGAUOyHD4zTfdY4E",
+    "cardsRootId": "KcbTXmcRjqIMIwade"
+  },
+  "wsAJ6phxC0VDmxyBl": {
+    "noteTitle": "02. Куча (Heap)_ быстрый доступ к минимуму и",
+    "cardThemeId": "UqoXSZe1OBurDiNqF",
+    "cardThemeTitle": "Cтруктуры данных Куча (heap)",
+    "reviewCardId": "vuSrmXHZnFTHCtu9o",
+    "cardsRootId": "h86j7km1PPpr6oBte"
+  },
+  "J9jJEdsNIWjxBllwY": {
+    "noteTitle": "02. Уровни изоляции транзакций",
+    "cardThemeId": "RV0B6wgKlJTp6AzMn",
+    "cardThemeTitle": "Транзакции Уровни изоляции транзакций",
+    "reviewCardId": "wPuloN8TURdPfZqDO",
+    "cardsRootId": "rpKWxbRD46uH58Njx"
+  },
+  "mthSS0BAEcJGhNOJz": {
+    "noteTitle": "01. Статический массив_ как работает",
+    "cardThemeId": "b0PCT8t1mYFmWFidS",
+    "cardThemeTitle": "Cтруктуры данных Массив, динамический массив",
+    "reviewCardId": "wnKP2RDVYTGgO3bGs",
+    "cardsRootId": "M1ydZJLo8J0ArRBq9"
+  },
+  "hXZxboASXXg64UoVb": {
+    "noteTitle": "06. Pydantic_ валидация и парсинг данных",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "xrAnBjoYGRR5JyGPw",
+    "cardsRootId": "TfzNucai6cKOEPlal"
+  },
+  "grXzajzNoM0xrB855": {
+    "noteTitle": "11. Нормализация баз данных_ 1НФ, 2НФ, 3НФ",
+    "cardThemeId": "Jdw6WXDViAIgcverP",
+    "cardThemeTitle": "Проектирование БД Нормализация (1НФ, 2НФ, 3НФ",
+    "reviewCardId": "zy3XZqb4MG8JLXmlu",
+    "cardsRootId": "xBo6Lu5eKr27LUFuS"
+  },
+  "jXtzzggD80I2TztWZ": {
+    "noteTitle": "04. Redis",
+    "cardThemeId": "gCxLFLOVPX6Yqa75t",
+    "cardThemeTitle": "Кэширование Redis",
+    "reviewCardId": "1eIJQMrlwMNIe8i2w",
+    "cardsRootId": "dJknPjbYFNk6swlH8"
+  },
+  "q59Z8vC0HkoIYmjR5": {
+    "noteTitle": "09. Паттерн Factory_ делегирование создания",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "3Rw1K9LktTdX8jqKH",
+    "cardsRootId": "wTrOREsUcwfsdg0wX"
+  },
+  "D7tcH3Q6rZjnhwYDy": {
+    "noteTitle": "21. Хранение данных в Docker",
+    "cardThemeId": "SRI44mW4pMs9eyi9a",
+    "cardThemeTitle": "Docker Compose",
+    "reviewCardId": "3kYh6nHPxEA1sCM2h",
+    "cardsRootId": "7KcldQ1BOmKDOJKHD"
+  },
+  "UuW1bXDgcHowcHZvA": {
+    "noteTitle": "32. SSH",
+    "cardThemeId": "B6OEfUy8hxJyxeq8B",
+    "cardThemeTitle": "SSH и удалённый доступ",
+    "reviewCardId": "5JInh4bVRLMs6v4cB",
+    "cardsRootId": "UmrWwgq9ek3YYobqR"
+  },
+  "5sikeDJd3yn0GlUID": {
+    "noteTitle": "41. Sentry_ мониторинг ошибок в продакшене",
+    "cardThemeId": "EaWUNYZTcHL7YBC5A",
+    "cardThemeTitle": "Логирование и мониторинг Уровни логов",
+    "reviewCardId": "6G57C843eZEBhJRnc",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "TliHerhkPMD59aPuo": {
+    "noteTitle": "01. SQL против NoSQL",
+    "cardThemeId": "DJnqMVnAiNWbankD7",
+    "cardThemeTitle": "NoSQL Разница реляционных и нереляционных БД",
+    "reviewCardId": "73SysivmUCoxvkZKY",
+    "cardsRootId": "dJknPjbYFNk6swlH8"
+  },
+  "ajKcQZQBHYV5xvSnO": {
+    "noteTitle": "27. GitHub Actions и GitLab CI_ конкретные",
+    "cardThemeId": "R21rPETusaLSEykCX",
+    "cardThemeTitle": "GitHub Actions и GitLab CI",
+    "reviewCardId": "7DhgqZ0EFwYhWGMnB",
+    "cardsRootId": "OMb9ZK9RM7LNNNiZ0"
+  },
+  "INQpVGaSPQrrtyGFC": {
+    "noteTitle": "11. Паттерн Observer_ как объекты узнают о",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "7kFilC38Mf7394LUH",
+    "cardsRootId": "RRpCqerUkOjJ98IA9"
+  },
+  "a9FwZt4ygZNhKUxTo": {
+    "noteTitle": "20. Сети в Docker",
+    "cardThemeId": "SRI44mW4pMs9eyi9a",
+    "cardThemeTitle": "Docker Compose",
+    "reviewCardId": "8bvjFM61Qkes9U3ix",
+    "cardsRootId": "7KcldQ1BOmKDOJKHD"
+  },
+  "gvcQDKXUgc8iJPOBU": {
+    "noteTitle": "17. 12-Factor App_ методология создания",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "C47KrQMKvWGAyGryD",
+    "cardsRootId": "rFk5vxKrSIq3Az19G"
+  },
+  "9lmuQXBNQMV0VJLJU": {
+    "noteTitle": "35. unittest_ стандартный фреймворк",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "CNZCj1LJjiFxJR5RU",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "rkwbxqqpbeHxmOwJb": {
+    "noteTitle": "04. Git Cherry-Pick",
+    "cardThemeId": "VtPr9bbPX899s8DXs",
+    "cardThemeTitle": "Cherry-pick",
+    "reviewCardId": "E6tmGpnAegkhEMFIx",
+    "cardsRootId": "UFU0ETovh6q6l5xIk"
+  },
+  "VEBU4OTCsVrEOYUqV": {
+    "noteTitle": "13. Паттерн Repository vs. ORM напрямую",
+    "cardThemeId": "AVZ6gWix16X4t0Lyf",
+    "cardThemeTitle": "Паттерны проектирования Repository",
+    "reviewCardId": "FFvTRAqhid307tLiQ",
+    "cardsRootId": "vONyFGPwApbUx9kYo"
+  },
+  "c59hqOW0VFYu1IiNm": {
+    "noteTitle": "39. Отладка в Python_ traceback, pdb и",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "HDIhq1VHNMSptRuFv",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "BdcjAfEwfmZrEXZBw": {
+    "noteTitle": "06. Стратегии кэширования",
+    "cardThemeId": "sBzvnPzjfE4Sln8eQ",
+    "cardThemeTitle": "Кэширование Стратегии",
+    "reviewCardId": "HIHw2GonEOvEnTAis",
+    "cardsRootId": "dJknPjbYFNk6swlH8"
+  },
+  "1s1MbRxW6FCiewx9l": {
+    "noteTitle": "49. Nginx и обратный прокси_ что стоит перед",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "IKMLLHZlU0FlQhhFr",
+    "cardsRootId": "UmrWwgq9ek3YYobqR"
+  },
+  "cPfroqZ79xyhOe4v6": {
+    "noteTitle": "04. Принципы DRY, KISS и YAGNI",
+    "cardThemeId": "mwoNA9EtHUxyMjFgF",
+    "cardThemeTitle": "Принципы DRY, KISS, YAGNI",
+    "reviewCardId": "ImbOJ7yjqQNh9WZG4",
+    "cardsRootId": "vE24IFd2LuoSTTrUK"
+  },
+  "P7V9wjrTx2aAFIYhD": {
+    "noteTitle": "16. Виртуальные машины vs Контейнеры",
+    "cardThemeId": "LLfkb9LO2vAb8Z9Z6",
+    "cardThemeTitle": "Образы и контейнеры",
+    "reviewCardId": "Jtx4nkxMA1li2UUKn",
+    "cardsRootId": "iu3tNxsWljSW48obM"
+  },
+  "yClfa73ZQFAbvqyQt": {
+    "noteTitle": "46. Секреты и переменные окружения",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "MMRqC5X6V4MEKk3JL",
+    "cardsRootId": "OMb9ZK9RM7LNNNiZ0"
+  },
+  "WDd7IopWHW6dh11it": {
+    "noteTitle": "12. Паттерн Decorator_ два способа добавить",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "NB2FAY3Y3xe2Pi96U",
+    "cardsRootId": "vONyFGPwApbUx9kYo"
+  },
+  "4KaEJBt9WgPxDX4kf": {
+    "noteTitle": "37. Логирование в Python_ от print() к",
+    "cardThemeId": "EaWUNYZTcHL7YBC5A",
+    "cardThemeTitle": "Логирование и мониторинг Уровни логов",
+    "reviewCardId": "NblDKlX3KfxA78DRu",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "yRdea1u1QWWX38TAy": {
+    "noteTitle": "31. Потоки и пайпы в Unix",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "OekJcldinsQLZ2bAW",
+    "cardsRootId": "UmrWwgq9ek3YYobqR"
+  },
+  "na5JB8PTwwPFxSizN": {
+    "noteTitle": "08. Стратегии ветвления_ Gitflow и",
+    "cardThemeId": "Xocwj1Ngr5gUpXuSV",
+    "cardThemeTitle": "Стратегии ветвления",
+    "reviewCardId": "PK6Bwvn4CUJSG3Lpk",
+    "cardsRootId": "UFU0ETovh6q6l5xIk"
+  },
+  "g0ZFkgJaHpo7pFFBg": {
+    "noteTitle": "16. Очереди сообщений_ RabbitMQ и Kafka",
+    "cardThemeId": "BMVxDAQGT0sCxulj5",
+    "cardThemeTitle": "Очереди задач Celery и фоновые задач",
+    "reviewCardId": "QryHGUtGAHGLMXljH",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "4CC0XpgjPbek5vhkS": {
+    "noteTitle": "18. Multi-stage сборка в Docker",
+    "cardThemeId": "5LTkvZrhAUSwX0wsO",
+    "cardThemeTitle": "Multi-stage build",
+    "reviewCardId": "RsDiy0XxTZvhQVP65",
+    "cardsRootId": "7KcldQ1BOmKDOJKHD"
+  },
+  "Gzw6KlKZdpDzwZ7G8": {
+    "noteTitle": "15. Очереди задач",
+    "cardThemeId": "BMVxDAQGT0sCxulj5",
+    "cardThemeTitle": "Очереди задач Celery и фоновые задач",
+    "reviewCardId": "V4umthQWNYS8Wd4ru",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "McFBuuPSzFTeKB5l7": {
+    "noteTitle": "12. Docker_ Image и Container",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "V5HexuRFNClJKyiYD",
+    "cardsRootId": "iu3tNxsWljSW48obM"
+  },
+  "Bzx6uEOQwIK8TK5M4": {
+    "noteTitle": "19. Docker Реестры",
+    "cardThemeId": "SRI44mW4pMs9eyi9a",
+    "cardThemeTitle": "Docker Compose",
+    "reviewCardId": "VDbYBRNY6zJvNq6Ti",
+    "cardsRootId": "7KcldQ1BOmKDOJKHD"
+  },
+  "LcGs8QrHCGnZdwwLE": {
+    "noteTitle": "09. Структура репозитория",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "WuHX4dsLykmD5RI19",
+    "cardsRootId": "UFU0ETovh6q6l5xIk"
+  },
+  "R2nWIjSTDLnm14Yxa": {
+    "noteTitle": "03. Управление TTL в Redis",
+    "cardThemeId": "gCxLFLOVPX6Yqa75t",
+    "cardThemeTitle": "Кэширование Redis",
+    "reviewCardId": "XUiXWcxr29TZnMov4",
+    "cardsRootId": "dJknPjbYFNk6swlH8"
+  },
+  "mE7fTzFn7Zl8VF8uk": {
+    "noteTitle": "45. Celery, Redis и Django_ асинхронные задачи",
+    "cardThemeId": "BMVxDAQGT0sCxulj5",
+    "cardThemeTitle": "Очереди задач Celery и фоновые задач",
+    "reviewCardId": "YD0NT6NW2KAyxT3k1",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "Y5kw84xlWiGIwhSY4": {
+    "noteTitle": "14. Docker Compose",
+    "cardThemeId": "f1Atf5nJZX0XGrWU0",
+    "cardThemeTitle": "Docker Hub и теги образов",
+    "reviewCardId": "YINkm1WEI8DciYlK1",
+    "cardsRootId": "iu3tNxsWljSW48obM"
+  },
+  "DVNi2Md8K83zriIeI": {
+    "noteTitle": "17. Контекст сборки Docker и .dockerignore",
+    "cardThemeId": "8Uju1wgsjJfOBnj10",
+    "cardThemeTitle": "dockerignore",
+    "reviewCardId": "YKryAf2akIPjpkm97",
+    "cardsRootId": "iu3tNxsWljSW48obM"
+  },
+  "z3XlHTDebBPNHJNjh": {
+    "noteTitle": "40. Мониторинг и метрики",
+    "cardThemeId": "XB9SZMi3FoiddTBKz",
+    "cardThemeTitle": "Логирование и мониторинг Метрики",
+    "reviewCardId": "aDYz7O5azQRtQ7jIB",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "egNwTmpt1ufMhpDiT": {
+    "noteTitle": "23. CI_CD_ Непрерывная интеграция и доставка",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "ace2f8GJ999E7tINv",
+    "cardsRootId": "OMb9ZK9RM7LNNNiZ0"
+  },
+  "rmHbtp6HG9Wxb8kvU": {
+    "noteTitle": "05. Redis как кэш",
+    "cardThemeId": "gCxLFLOVPX6Yqa75t",
+    "cardThemeTitle": "Кэширование Redis",
+    "reviewCardId": "bWlbuEzBQ6PnaeDaZ",
+    "cardsRootId": "dJknPjbYFNk6swlH8"
+  },
+  "4FkrhOXO2iINL2WbR": {
+    "noteTitle": "22. Kubernetes_ базовые понятия для чтения",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "cnRpVl9TreQGfNDMF",
+    "cardsRootId": "7KcldQ1BOmKDOJKHD"
+  },
+  "iNg4okfvNai8JG6dR": {
+    "noteTitle": "07. Монолит и микросервисы",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "crMGGzYkxY0Pn0rwq",
+    "cardsRootId": "Obc2rXFv1hCMznwVO"
+  },
+  "roDixIsjZXS5cXvsz": {
+    "noteTitle": "15. Основные команды Docker",
+    "cardThemeId": "KRGiVBuJ9iz64voGD",
+    "cardThemeTitle": "Команды",
+    "reviewCardId": "dAYFoGSxOyf8AoPdL",
+    "cardsRootId": "iu3tNxsWljSW48obM"
+  },
+  "JLM4FK22YAi0FIB3Q": {
+    "noteTitle": "07. Инвалидация кэша и метрики эффективности",
+    "cardThemeId": "6XqCPsyC977Jp8LzR",
+    "cardThemeTitle": "Кэширование Инвалидация",
+    "reviewCardId": "ec2sC9HJk5QdLTOrZ",
+    "cardsRootId": "dJknPjbYFNk6swlH8"
+  },
+  "RPTvh22jEMI4a5R73": {
+    "noteTitle": "05. Конфликты в Git",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "ekGpQyLYC5pVKm5ZC",
+    "cardsRootId": "UFU0ETovh6q6l5xIk"
+  },
+  "DCrcN3l77jPTy3fEf": {
+    "noteTitle": "30. Управление процессами в Linux",
+    "cardThemeId": "CGUYP9PMCOU5tlbIG",
+    "cardThemeTitle": "Работа с процессами",
+    "reviewCardId": "f4tzEz63m7Q2Tpyoj",
+    "cardsRootId": "UmrWwgq9ek3YYobqR"
+  },
+  "Iz4YA1CisfSfd3kFY": {
+    "noteTitle": "24. CI_CD_ Ранеры, Артефакты, Секреты",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "gpGPKUcY40B06VOkY",
+    "cardsRootId": "OMb9ZK9RM7LNNNiZ0"
+  },
+  "eoL6x7GGF8zrdqHrM": {
+    "noteTitle": "25. Пайплайн_ от коммита до продакшена",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "i6Xo8mCxbGXntjWvT",
+    "cardsRootId": "OMb9ZK9RM7LNNNiZ0"
+  },
+  "uZk4SiFNkFJ7ErUqr": {
+    "noteTitle": "07. Жизненный цикл изменений в Git",
+    "cardThemeId": "xww8CUxE5MA8MSgAi",
+    "cardThemeTitle": "Базовый цикл",
+    "reviewCardId": "igyg02XCI97ig07cQ",
+    "cardsRootId": "UFU0ETovh6q6l5xIk"
+  },
+  "dLCTJ3SgxqtVtvh88": {
+    "noteTitle": "36. Test coverage_ покрытие кода тестами и",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "inJiciClSJs5ME82d",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "SmJnqU55hWoSFMkm5": {
+    "noteTitle": "05. Separation of Concerns и слои приложения",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "lZ2SE4mTnywnQKEbw",
+    "cardsRootId": "Obc2rXFv1hCMznwVO"
+  },
+  "H8d9Cv5fommmFFYxF": {
+    "noteTitle": "03. Git Stash",
+    "cardThemeId": "NYf353kMB4L3GKbOX",
+    "cardThemeTitle": "Stash",
+    "reviewCardId": "lwp73lFnYRDvOfxDw",
+    "cardsRootId": "UFU0ETovh6q6l5xIk"
+  },
+  "gTHStpncb1iFI7tDc": {
+    "noteTitle": "26. Переменные окружения в Linux",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "lxa8QR9Hszighi61w",
+    "cardsRootId": "OMb9ZK9RM7LNNNiZ0"
+  },
+  "kwerf7dWrFDmsnp6y": {
+    "noteTitle": "03. Принципы SOLID",
+    "cardThemeId": "0bM8tfxPuVuZZhz56",
+    "cardThemeTitle": "Принципы SOLID",
+    "reviewCardId": "mHLM8a6R3q18TjY2Y",
+    "cardsRootId": "vE24IFd2LuoSTTrUK"
+  },
+  "Z7Htak584I6FAq0Qo": {
+    "noteTitle": "29. Работа с файлами в Linux",
+    "cardThemeId": "Sc8xqEukLZ3IeQpBK",
+    "cardThemeTitle": "Работа с файлами",
+    "reviewCardId": "neEwgaaYXDnP0LyQE",
+    "cardsRootId": "UmrWwgq9ek3YYobqR"
+  },
+  "EpYqltRAqoHUdTqOr": {
+    "noteTitle": "48. Health checks_ readiness и liveness",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "nftmzZp6jIaxeWiih",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "sPXu1ShYghXx0Qdxd": {
+    "noteTitle": "02. MongoDB_ документоориентированная база данных",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "nr8MQtQa0HXFkg9HN",
+    "cardsRootId": "dJknPjbYFNk6swlH8"
+  },
+  "ADuvMZVn7ft0Tx9Dm": {
+    "noteTitle": "10. Pull Request",
+    "cardThemeId": "XIVdSSuhnC6YMGoKV",
+    "cardThemeTitle": "Pull Request и Code Review",
+    "reviewCardId": "p8TWdd7C7BDsA8v7c",
+    "cardsRootId": "UFU0ETovh6q6l5xIk"
+  },
+  "FILh4QEa6wadlnZCW": {
+    "noteTitle": "08. Паттерн Singleton",
+    "cardThemeId": "okLQ22dQZy9yXWkXQ",
+    "cardThemeTitle": "Паттерны проектирования Singleton",
+    "reviewCardId": "qNM3azMIE4ktAzBzB",
+    "cardsRootId": "wTrOREsUcwfsdg0wX"
+  },
+  "8hI7lT9YE0tkP2Dvq": {
+    "noteTitle": "38. Уровни логирования в Python",
+    "cardThemeId": "EaWUNYZTcHL7YBC5A",
+    "cardThemeTitle": "Логирование и мониторинг Уровни логов",
+    "reviewCardId": "s6xiBHPX0ZqmnR986",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "1uSE7c6J3ABHIhDgQ": {
+    "noteTitle": "06. Чтение истории в Git_ log, diff, blame",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "sqB0u4bNQjn4hLaR8",
+    "cardsRootId": "UFU0ETovh6q6l5xIk"
+  },
+  "HAUVAfIeWIUtTETMx": {
+    "noteTitle": "33. Unit vs Integration тесты и TDD_ подход",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "srnhb6mjqTOJlJvOz",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "Pmu3tzXqDw8P6Ob3E": {
+    "noteTitle": "28. Командная строка Linux_ навигация и",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "srxx6UuNa9dE05UBc",
+    "cardsRootId": "UmrWwgq9ek3YYobqR"
+  },
+  "k3BxCTneRwlK8WCjE": {
+    "noteTitle": "11. .gitignore",
+    "cardThemeId": "BQYVQK1YO5pYvu3bQ",
+    "cardThemeTitle": "Файл .gitignore",
+    "reviewCardId": "svDBkInw9JioUNvRq",
+    "cardsRootId": "UFU0ETovh6q6l5xIk"
+  },
+  "nsv9PCzrhDCZdKziA": {
+    "noteTitle": "06. Слоистая архитектура",
+    "cardThemeId": "t4K51fruSLxrTbUkL",
+    "cardThemeTitle": "Архитектура Layered Architecture (слоистая ар",
+    "reviewCardId": "tP7Q2EVfAJUSdfLIa",
+    "cardsRootId": "Obc2rXFv1hCMznwVO"
+  },
+  "mHPEul0j4jakQo6PY": {
+    "noteTitle": "10. Паттерн Strategy_ взаимозаменяемые алгоритмы",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "uewdJCkPaxzHHNaGu",
+    "cardsRootId": "RRpCqerUkOjJ98IA9"
+  },
+  "r989gXFRi6C7jGdAG": {
+    "noteTitle": "13. Dockerfile_ как устроена сборка образа",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "vqiPmjW2UHAFHo7Dn",
+    "cardsRootId": "iu3tNxsWljSW48obM"
+  },
+  "0iXkQtkKcn8okI99q": {
+    "noteTitle": "05. JSONB и массивы в PostgreSQL",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "xwwS97cgp9PbwY3EY",
+    "cardsRootId": "C9m2Fabu6FddZBMLy"
+  },
+  "4rTUCvBSsfnZjH53a": {
+    "noteTitle": "34. pytest_ фикстуры, моки и патчи",
+    "cardThemeId": null,
+    "cardThemeTitle": null,
+    "reviewCardId": "zgbd9MNJtAqVO6cv2",
+    "cardsRootId": "W7kI2riAaOqD4A0yh"
+  },
+  "xMojALlJXq7yjsTn9": {
+    "noteTitle": "02. Git Merge vs Git Rebase",
+    "cardThemeId": "uW738W4cZ7EEfMAug",
+    "cardThemeTitle": "Разница между merge и rebase",
+    "reviewCardId": "FaEqBCNHfjY8reRTN",
+    "cardsRootId": "UFU0ETovh6q6l5xIk"
+  },
+  "FRbWMMpGI3IPOz8iw": {
+    "noteTitle": "01. Ветки в Git_ checkout, switch и",
+    "cardThemeId": "WdKHlwCXti8XCO2M4",
+    "cardThemeTitle": "Ветки",
+    "reviewCardId": "aUGoKVUCxlA8x9bYu",
+    "cardsRootId": "UFU0ETovh6q6l5xIk"
+  },
+  "96Rz1IKEwwo0Lk1ay": {
+    "noteTitle": "13. Функции zip() и id()",
+    "cardThemeId": "NPSJPwO3ClPh9ZJFP",
+    "cardThemeTitle": "Функция zip()",
+    "reviewCardId": "RjOnPptyOb5pArQMf",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "NKKRlyngefwsXEsa7": {
+    "noteTitle": "12. Работа с файлами в Python: open(), режимы и контекстные менеджеры",
+    "cardThemeId": "Qoo6QIvcK6maq2bKE",
+    "cardThemeTitle": "Работа с файлами",
+    "reviewCardId": "KWyizmKNYUNH0r6wA",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "xG38BYDcmlvWw4qmX": {
+    "noteTitle": "11. Моржовый оператор := присваивание внутри выражения",
+    "cardThemeId": "71q6lJbaX5CoJRcvA",
+    "cardThemeTitle": "Моржовый оператор",
+    "reviewCardId": "DfF11LepTtZ8AqKgC",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "GsgUwfKgdl41Y0Tif": {
+    "noteTitle": "10. Передача аргументов в Python: pass by assignment (передача по присваиванию)",
+    "cardThemeId": "EGferi8CokwUzUO1m",
+    "cardThemeTitle": "Оператор pass",
+    "reviewCardId": "0jzZO3DYMwJ5qQdn6",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "QFXwWKFu51y3rmTSQ": {
+    "noteTitle": "09. Именованные кортежи в Python: namedtuple",
+    "cardThemeId": "YnoDjyZXBt6phgrON",
+    "cardThemeTitle": "Именованный кортеж namedtuple",
+    "reviewCardId": "XkaldXAGC2wE0dU6R",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "vojgdeCdnKKeerKtX": {
+    "noteTitle": "08. Модуль collections: специализированные структуры данных в Python",
+    "cardThemeId": "AjWq1y9RdK7PSCCCO",
+    "cardThemeTitle": "Типы данных ключей словаря",
+    "reviewCardId": "MFDZkSf2ij4ywfRmz",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "ppKEEdmxSMuPfJWfq": {
+    "noteTitle": "07. append(), extend() и другие методы изменения списка",
+    "cardThemeId": "D2twicJGizMjYw7du",
+    "cardThemeTitle": "Разница между append() и extend()",
+    "reviewCardId": "xHchNIXMWwoFIDirE",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "1tvrAGLo7p3Sjozcb": {
+    "noteTitle": "06. Методы словаря: get(), keys(), values(), items()",
+    "cardThemeId": "7hlFSb2wYTZyxOX54",
+    "cardThemeTitle": "Получения элементов словаря",
+    "reviewCardId": "WkLX0inmXh8unVhkR",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "A2YSRaHlBxzDmUxpr": {
+    "noteTitle": "05. *args, **kwargs и распаковка в Python",
+    "cardThemeId": "OBDSlqGpYBRpl22r6",
+    "cardThemeTitle": "Переменные args и kwargs",
+    "reviewCardId": "Ysi7OQh0U9MGQax5Z",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "rbtsQEFIvoHVZxrZc": {
+    "noteTitle": "04. frozenset: неизменяемое множество",
+    "cardThemeId": "BuXIuiP2QPQM9JAg5",
+    "cardThemeTitle": "Неизменяемое множество frozenset",
+    "reviewCardId": "Qtvn1Mlwwm1mySY29",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "lflNtPd50pYTPfQX7": {
+    "noteTitle": "03. Срезы в Python: slice и синтаксис [start:stop:step]",
+    "cardThemeId": "E8FsQfttqskSY6v9l",
+    "cardThemeTitle": "Срезы",
+    "reviewCardId": "wgj6Rm7cFsxMopxvF",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "KkoKoKUGoRgTvpHnY": {
+    "noteTitle": "02. list vs tuple: когда что выбрать",
+    "cardThemeId": "zeLPOTZgS6HMEqfDf",
+    "cardThemeTitle": "Список vs. кортеж",
+    "reviewCardId": "fDrsYIvN6YKrLJF7K",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  },
+  "MkMzFB2C7CcFVmWBM": {
+    "noteTitle": "01. Структуры данных Python: list, dict, set",
+    "cardThemeId": "YGAQC5yDHhkPb7145",
+    "cardThemeTitle": "list comprehension, dict comprehension и set",
+    "reviewCardId": "wlNPKv87D5L5yHI9l",
+    "cardsRootId": "4Q25cZLasmPYs9Jq8"
+  }
+}

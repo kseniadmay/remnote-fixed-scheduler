@@ -9,6 +9,7 @@ import {
   RichTextInterface,
   RichTextElementInterface,
 } from '@remnote/plugin-sdk';
+import noteCardsManifestRaw from './note_cards_manifest.json';
 
 // ============================================================
 // Часть 1: Жёсткий график повторения 1-3-7-21-30 и далее
@@ -1483,9 +1484,18 @@ async function onActivate(plugin: ReactRNPlugin) {
               }
             }
 
-            if (cardsRootFolder) {
+            let bestTheme: PluginRem | undefined;
+            const manifestEntry = (noteCardsManifestRaw as any)[target._id];
+            if (manifestEntry?.cardThemeId) {
+              const themeRem = await plugin.rem.findOne(manifestEntry.cardThemeId);
+              if (themeRem) {
+                bestTheme = themeRem;
+                matchedThemeTitle = manifestEntry.cardThemeTitle || (await plugin.richText.toString(themeRem.text || []));
+              }
+            }
+
+            if (!bestTheme && cardsRootFolder) {
               const themeFolders = (await cardsRootFolder.getChildrenRem()) || [];
-              let bestTheme: PluginRem | undefined;
               let bestScore = 0;
 
               for (const theme of themeFolders) {
@@ -1507,9 +1517,12 @@ async function onActivate(plugin: ReactRNPlugin) {
                   bestTheme = theme;
                 }
               }
-
               if (bestTheme && bestScore > 0) {
                 matchedThemeTitle = await plugin.richText.toString(bestTheme.text || []);
+              }
+            }
+
+            if (bestTheme) {
                 if (await bestTheme.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
                   await bestTheme.removePowerup(BuiltInPowerupCodes.DisableCards);
                 }
@@ -1537,8 +1550,7 @@ async function onActivate(plugin: ReactRNPlugin) {
               }
             }
           }
-        }
-      } catch (err) {
+        } catch (err) {
         console.error('Error matching detail cards:', err);
       }
 

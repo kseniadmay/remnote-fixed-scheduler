@@ -6,6 +6,7 @@ import {
   WidgetLocation,
 } from '@remnote/plugin-sdk';
 import React, { useState } from 'react';
+import noteCardsManifestRaw from './note_cards_manifest.json';
 
 const FIXED_STEPS_DAYS = [1, 3, 7, 21, 30];
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -14,6 +15,8 @@ interface NoteScheduleState {
   stage: number; // 0 = не изучен, 1 = 1 день, 2 = 3 дня, 3 = 7 дней, 4 = 21 день, 5 = 30 дней, 6 = освоен
   nextReviewDate?: number;
   lastReviewDate?: number;
+  cardThemeId?: string | null;
+  cardThemeTitle?: string | null;
 }
 
 export const NoteSchedulerBar = () => {
@@ -60,7 +63,12 @@ export const NoteSchedulerBar = () => {
       const schedState = (await plugin.storage.getSynced<NoteScheduleState>(`note_sched_${rem._id}`)) || {
         stage: 0,
       };
-      return { rem, isDoc, isPaused, title, schedState };
+
+      const manifestEntry = (noteCardsManifestRaw as any)[rem._id];
+      const cardThemeId = manifestEntry?.cardThemeId || schedState.cardThemeId || null;
+      const cardThemeTitle = manifestEntry?.cardThemeTitle || schedState.cardThemeTitle || null;
+
+      return { rem, isDoc, isPaused, title, schedState, cardThemeId, cardThemeTitle };
     } catch (_) {
       return null;
     }
@@ -70,7 +78,7 @@ export const NoteSchedulerBar = () => {
     return null;
   }
 
-  const { rem, isPaused, schedState } = data;
+  const { rem, isPaused, schedState, cardThemeId, cardThemeTitle } = data;
   const stage = schedState.stage || 0;
 
   // Форматирование даты
@@ -295,6 +303,23 @@ export const NoteSchedulerBar = () => {
     }
   };
 
+  // Открыть тему карточек для тренировки прямо сейчас
+  const handlePracticeTheme = async () => {
+    if (!cardThemeId) {
+      await plugin.app.toast('Карточки для этой темы не найдены в манифесте');
+      return;
+    }
+    try {
+      const themeRem = await plugin.rem.findOne(cardThemeId);
+      if (themeRem) {
+        await plugin.window.openRem(themeRem);
+        await plugin.app.toast(`📇 Открыта тема «${cardThemeTitle || 'Карточки темы'}». Нажмите Practice вверху для тренировки!`);
+      }
+    } catch (e) {
+      await plugin.app.toast(`Ошибка: ${String(e)}`);
+    }
+  };
+
   return (
     <div
       style={{
@@ -399,6 +424,27 @@ export const NoteSchedulerBar = () => {
                 ? '…'
                 : `✅ Повторил конспект (${stage < 5 ? `след.: ${FIXED_STEPS_DAYS[stage]}д` : 'финал'})`}
             </button>
+
+            {cardThemeId && (
+              <button
+                onClick={handlePracticeTheme}
+                disabled={loading}
+                style={{
+                  cursor: loading ? 'wait' : 'pointer',
+                  background: '#d97706',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '5px 10px',
+                  fontWeight: 500,
+                  fontSize: '11px',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.12)',
+                }}
+                title={`Открыть карточки темы «${cardThemeTitle || ''}» для тренировки`}
+              >
+                🎯 Учить эту тему сейчас
+              </button>
+            )}
 
             {isPaused ? (
               <button
