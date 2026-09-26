@@ -1427,7 +1427,16 @@ async function onActivate(plugin: ReactRNPlugin) {
         }
       }
 
-      // Снимаем паузу с родителей конспекта (например, модуль 01 · Python)
+      // 2. Ставим конспект на 1-й шаг интервального перечитывания (1-3-7-21-30)
+      try {
+        await plugin.storage.setSynced(`note_sched_${target._id}`, {
+          stage: 1,
+          nextReviewDate: Date.now() + 24 * 60 * 60 * 1000,
+          lastReviewDate: Date.now(),
+        });
+      } catch (_) {}
+
+      // 3. Снимаем паузу с родителей конспекта (например, модуль 01 · Python)
       try {
         let curr: PluginRem | undefined = target;
         while (curr) {
@@ -1448,8 +1457,96 @@ async function onActivate(plugin: ReactRNPlugin) {
         }
       } catch (_) {}
 
-      const title = (await plugin.richText.toString(target.text || [])).slice(0, 35);
-      await plugin.app.toast(`🎯 Карточки конспекта «${title}» активированы! Включено: ${count}`);
+      // 4. Ищем парную тему в соседней папке "Карточки" этого же Юнита
+      let detailCardsCount = 0;
+      let matchedThemeTitle = '';
+      try {
+        const noteTitle = await plugin.richText.toString(target.text || []);
+        const cleanWords = noteTitle
+          .toLowerCase()
+          .replace(/^\d+[\.\s]+/, '')
+          .replace(/[^\p{L}\p{N}]+/gu, ' ')
+          .split(/\s+/)
+          .filter(w => w.length > 2 && !['для', 'как', 'что', 'это', 'или', 'при', 'все', 'другие', 'методы', 'python'].includes(w));
+
+        const parentRem = await target.getParentRem();
+        if (parentRem) {
+          const grandParent = await parentRem.getParentRem();
+          if (grandParent) {
+            const siblingFolders = (await grandParent.getChildrenRem()) || [];
+            let cardsRootFolder: PluginRem | undefined;
+            for (const f of siblingFolders) {
+              const fTitle = (await plugin.richText.toString(f.text || [])).toLowerCase();
+              if (fTitle.includes('карточки') || fTitle.includes('cards')) {
+                cardsRootFolder = f;
+                break;
+              }
+            }
+
+            if (cardsRootFolder) {
+              const themeFolders = (await cardsRootFolder.getChildrenRem()) || [];
+              let bestTheme: PluginRem | undefined;
+              let bestScore = 0;
+
+              for (const theme of themeFolders) {
+                const themeTitle = (await plugin.richText.toString(theme.text || [])).toLowerCase();
+                const tWords = themeTitle
+                  .replace(/[^\p{L}\p{N}]+/gu, ' ')
+                  .split(/\s+/)
+                  .filter(w => w.length > 2);
+
+                let score = 0;
+                for (const cw of cleanWords) {
+                  if (tWords.includes(cw) || themeTitle.includes(cw)) {
+                    score++;
+                  }
+                }
+
+                if (score > bestScore) {
+                  bestScore = score;
+                  bestTheme = theme;
+                }
+              }
+
+              if (bestTheme && bestScore > 0) {
+                matchedThemeTitle = await plugin.richText.toString(bestTheme.text || []);
+                if (await bestTheme.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+                  await bestTheme.removePowerup(BuiltInPowerupCodes.DisableCards);
+                }
+                await bestTheme.setEnablePractice(true);
+
+                const themeDescendants = (await bestTheme.getDescendants()) || [];
+                for (const td of themeDescendants) {
+                  if (await td.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+                    await td.removePowerup(BuiltInPowerupCodes.DisableCards);
+                  }
+                  let isC = false;
+                  try {
+                    const cList = await td.getCards();
+                    isC = (cList && cList.length > 0) || false;
+                  } catch (_) {}
+                  if (!isC) {
+                    const txt = await plugin.richText.toString(td.text || []);
+                    isC = txt.includes('::') || txt.includes('==') || td.type === 1 || td.type === 2;
+                  }
+                  if (isC) {
+                    await td.setEnablePractice(true);
+                    detailCardsCount++;
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error matching detail cards:', err);
+      }
+
+      let msg = `🎯 Активировано: карточка перечитывания конспекта (повтор: завтра)`;
+      if (detailCardsCount > 0) {
+        msg += ` + ${detailCardsCount} проверочных карточек темы «${matchedThemeTitle}»!`;
+      }
+      await plugin.app.toast(msg);
     } catch (e) {
       await plugin.app.toast(`Ошибка активации: ${String(e)}`);
     }

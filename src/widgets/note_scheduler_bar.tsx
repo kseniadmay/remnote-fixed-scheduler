@@ -27,6 +27,34 @@ export const NoteSchedulerBar = () => {
       const rem = docId ? await plugin.rem.findOne(docId) : await plugin.focus.getFocusedRem();
       if (!rem) return null;
       const isDoc = await rem.isDocument();
+      if (!isDoc) return null;
+
+      // Строгая фильтрация: плашка отображается ТОЛЬКО если внутри есть карточка перечитывания конспекта
+      const children = (await rem.getChildrenRem()) || [];
+      let isNote = false;
+      for (const ch of children) {
+        const text = (await plugin.richText.toString(ch.text || [])).toLowerCase();
+        if (text.includes('перечитать') || text.includes('прочитан') || text.includes('перечитан')) {
+          isNote = true;
+          break;
+        }
+      }
+
+      if (!isNote) {
+        const descendants = (await rem.getDescendants()) || [];
+        for (const ch of descendants.slice(0, 40)) {
+          const text = (await plugin.richText.toString(ch.text || [])).toLowerCase();
+          if (text.includes('перечитать') || text.includes('прочитан') || text.includes('перечитан')) {
+            isNote = true;
+            break;
+          }
+        }
+      }
+
+      if (!isNote) {
+        return null;
+      }
+
       const isPaused = await rem.hasPowerup(BuiltInPowerupCodes.DisableCards);
       const title = await plugin.richText.toString(rem.text || []);
       const schedState = (await plugin.storage.getSynced<NoteScheduleState>(`note_sched_${rem._id}`)) || {
@@ -93,9 +121,83 @@ export const NoteSchedulerBar = () => {
       };
       await plugin.storage.setSynced(`note_sched_${rem._id}`, newState);
 
-      await plugin.app.toast(
-        `✅ Конспект изучен! Детальные карточки разблокированы и отданы в FSRS. Первое повторение конспекта: завтра.`
-      );
+      // 3. Ищем и активируем парную тему в соседней папке "Карточки" этого же Юнита
+      let detailCount = 0;
+      let matchedTheme = '';
+      try {
+        const noteTitle = await plugin.richText.toString(rem.text || []);
+        const cleanWords = noteTitle
+          .toLowerCase()
+          .replace(/^\d+[\.\s]+/, '')
+          .replace(/[^\p{L}\p{N}]+/gu, ' ')
+          .split(/\s+/)
+          .filter(w => w.length > 2 && !['для', 'как', 'что', 'это', 'или', 'при', 'все', 'другие', 'методы', 'python'].includes(w));
+
+        const parentRem = await rem.getParentRem();
+        if (parentRem) {
+          const grandParent = await parentRem.getParentRem();
+          if (grandParent) {
+            const siblingFolders = (await grandParent.getChildrenRem()) || [];
+            let cardsRootFolder: any;
+            for (const f of siblingFolders) {
+              const fTitle = (await plugin.richText.toString(f.text || [])).toLowerCase();
+              if (fTitle.includes('карточки') || fTitle.includes('cards')) {
+                cardsRootFolder = f;
+                break;
+              }
+            }
+
+            if (cardsRootFolder) {
+              const themeFolders = (await cardsRootFolder.getChildrenRem()) || [];
+              let bestTheme: any;
+              let bestScore = 0;
+
+              for (const theme of themeFolders) {
+                const themeTitle = (await plugin.richText.toString(theme.text || [])).toLowerCase();
+                const tWords = themeTitle
+                  .replace(/[^\p{L}\p{N}]+/gu, ' ')
+                  .split(/\s+/)
+                  .filter(w => w.length > 2);
+
+                let score = 0;
+                for (const cw of cleanWords) {
+                  if (tWords.includes(cw) || themeTitle.includes(cw)) {
+                    score++;
+                  }
+                }
+
+                if (score > bestScore) {
+                  bestScore = score;
+                  bestTheme = theme;
+                }
+              }
+
+              if (bestTheme && bestScore > 0) {
+                matchedTheme = await plugin.richText.toString(bestTheme.text || []);
+                if (await bestTheme.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+                  await bestTheme.removePowerup(BuiltInPowerupCodes.DisableCards);
+                }
+                await bestTheme.setEnablePractice(true);
+
+                const themeDescendants = (await bestTheme.getDescendants()) || [];
+                for (const td of themeDescendants) {
+                  if (await td.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+                    await td.removePowerup(BuiltInPowerupCodes.DisableCards);
+                  }
+                  await td.setEnablePractice(true);
+                  detailCount++;
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+
+      let toastMsg = `🎯 Конспект изучен! Повтор конспекта: завтра`;
+      if (detailCount > 0) {
+        toastMsg += ` + ${detailCount} проверочных карточек темы «${matchedTheme}» активированы!`;
+      }
+      await plugin.app.toast(toastMsg);
     } catch (e) {
       await plugin.app.toast(`Ошибка: ${String(e)}`);
     } finally {
