@@ -1647,7 +1647,66 @@ async function onActivate(plugin: ReactRNPlugin) {
     }
   }
 
+  // Добавить явные кликабельные ссылки на файлы карточек в конспекты
+  async function linkNotesToCards(plugin: ReactRNPlugin, singleNote?: PluginRem) {
+    try {
+      await plugin.app.toast('🔗 Добавляем явные ссылки на файлы карточек...');
+      const target = singleNote || (await plugin.focus.getFocusedRem());
+      const manifestEntries = target
+        ? [[target._id, (noteCardsManifestRaw as any)[target._id]]]
+        : Object.entries(noteCardsManifestRaw as Record<string, any>);
+
+      let linkedCount = 0;
+      for (const [noteId, entry] of manifestEntries) {
+        if (!entry?.cardThemeId) continue;
+
+        try {
+          const noteRem = await plugin.rem.findOne(noteId);
+          if (!noteRem) continue;
+
+          const children = (await noteRem.getChildrenRem()) || [];
+          let alreadyHasLink = false;
+          for (const ch of children) {
+            const chText = await plugin.richText.toString(ch.text || []);
+            if (
+              chText.includes('Связанные карточки') ||
+              chText.includes('Файл карточек') ||
+              chText.includes('Карточки темы')
+            ) {
+              alreadyHasLink = true;
+              break;
+            }
+          }
+
+          if (!alreadyHasLink) {
+            const linkRem = await plugin.rem.createRem();
+            if (linkRem) {
+              await linkRem.setText([
+                '📁 Связанные карточки: ',
+                { i: 'q', _id: entry.cardThemeId },
+              ]);
+              await linkRem.setParent(noteRem._id, 1);
+              linkedCount++;
+            }
+          }
+        } catch (_) {}
+      }
+
+      await plugin.app.toast(`✅ Готово! Ссылки на карточки добавлены в ${linkedCount} конспектов.`);
+    } catch (e) {
+      await plugin.app.toast(`Ошибка: ${String(e)}`);
+    }
+  }
+
   // Регистрация команд палитры (Ctrl+K)
+  await plugin.app.registerCommand({
+    id: 'link-current-note-to-cards',
+    name: '🔗 Добавить явную ссылку на файл карточек в этот конспект',
+    action: async () => {
+      await linkNotesToCards(plugin);
+    },
+  });
+
   await plugin.app.registerCommand({
     id: 'freeze-all-unstudied-cards',
     name: '❄️ Отключить карточки неизученных тем (оставить только изученные конспекты)',
@@ -1722,6 +1781,17 @@ async function onActivate(plugin: ReactRNPlugin) {
         const remId = args?.remId;
         const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
         await freezeAllUnstudiedCards(plugin, rem);
+      },
+    });
+
+    await plugin.app.registerMenuItem({
+      id: 'menu-link-note-to-cards',
+      name: '🔗 Добавить явную ссылку на файл карточек',
+      location: PluginCommandMenuLocation.DocumentMenu,
+      action: async (args: any) => {
+        const remId = args?.remId;
+        const rem = remId ? await plugin.rem.findOne(remId) : await plugin.focus.getFocusedRem();
+        if (rem) await linkNotesToCards(plugin, rem);
       },
     });
 

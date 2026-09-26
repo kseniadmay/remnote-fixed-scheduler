@@ -387,17 +387,21 @@ export const NoteSchedulerBar = () => {
     }
   };
 
-  // Открыть тему карточек для тренировки прямо сейчас
+  // Открыть тему карточек прямо сейчас
   const handlePracticeTheme = async () => {
     if (!cardThemeId) {
-      await plugin.app.toast('Карточки для этой темы не найдены в манифесте');
+      await plugin.app.toast('Файл карточек для этой темы не найден');
       return;
     }
     try {
       const themeRem = await plugin.rem.findOne(cardThemeId);
       if (themeRem) {
-        await plugin.window.openRem(themeRem);
-        await plugin.app.toast(`📇 Открыта тема «${cardThemeTitle || 'Карточки темы'}». Нажмите Practice вверху для тренировки!`);
+        try {
+          await plugin.window.openRem(themeRem);
+        } catch (_) {
+          await themeRem.openRemAsPage();
+        }
+        await plugin.app.toast(`📇 Открыт файл карточек: «${cardThemeTitle || 'Карточки темы'}»`);
       }
     } catch (e) {
       await plugin.app.toast(`Ошибка: ${String(e)}`);
@@ -464,6 +468,34 @@ export const NoteSchedulerBar = () => {
               <span style={{ color: '#145a46', fontWeight: 500 }}>активны в FSRS</span>
             )}
           </div>
+          {cardThemeTitle ? (
+            <div style={{ fontSize: '11px', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ color: '#475569', fontWeight: 500 }}>📁 Файл карточек темы:</span>
+              <a
+                onClick={(e) => {
+                  e.preventDefault();
+                  handlePracticeTheme();
+                }}
+                style={{
+                  cursor: 'pointer',
+                  color: '#0369a1',
+                  background: 'rgba(3, 105, 161, 0.08)',
+                  border: '1px solid rgba(3, 105, 161, 0.25)',
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  textDecoration: 'none',
+                }}
+                title="Нажмите, чтобы открыть файл связанных карточек в RemNote"
+              >
+                <span>🗂️ {cardThemeTitle}</span>
+                <span style={{ fontSize: '10px' }}>↗</span>
+              </a>
+            </div>
+          ) : null}
         </div>
       </div>
 
