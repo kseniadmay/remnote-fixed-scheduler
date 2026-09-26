@@ -246,43 +246,82 @@ export const NoteSchedulerBar = () => {
     }
   };
 
-  // Заморозить неизученные темы через RemNote API
+  // Отключить темы, где конспект ещё НЕ был изучен
   const handleFreezeOthers = async () => {
     setLoading(true);
     try {
-      await plugin.app.toast('❄️ Очищаем очередь от неизученных тем через RemNote API...');
+      await plugin.app.toast('❄️ Проверяем конспекты: отключаем карточки неизученных тем...');
       let frozenCount = 0;
+      let activeCount = 0;
       const manifestEntries = Object.entries(noteCardsManifestRaw as Record<string, any>);
 
       for (const [nId, entry] of manifestEntries) {
-        if (entry.reviewCardId && entry.reviewCardId !== reviewCardId) {
-          try {
-            const revRem = await plugin.rem.findOne(entry.reviewCardId);
-            if (revRem) {
-              if (!(await revRem.hasPowerup(BuiltInPowerupCodes.DisableCards))) {
-                await revRem.addPowerup(BuiltInPowerupCodes.DisableCards);
-              }
-              await revRem.setEnablePractice(false);
-              frozenCount++;
-            }
-          } catch (_) {}
-        }
+        const sState = await plugin.storage.getSynced<{ stage?: number }>(`note_sched_${nId}`);
+        const isCurrent = nId === rem._id;
+        const isStudied = Boolean((sState?.stage && sState.stage > 0) || isCurrent);
 
-        if (entry.cardThemeId && entry.cardThemeId !== cardThemeId) {
-          try {
-            const themeRem = await plugin.rem.findOne(entry.cardThemeId);
-            if (themeRem) {
-              if (!(await themeRem.hasPowerup(BuiltInPowerupCodes.DisableCards))) {
-                await themeRem.addPowerup(BuiltInPowerupCodes.DisableCards);
+        if (isStudied) {
+          activeCount++;
+          if (entry.reviewCardId) {
+            try {
+              const revRem = await plugin.rem.findOne(entry.reviewCardId);
+              if (revRem) {
+                if (await revRem.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+                  await revRem.removePowerup(BuiltInPowerupCodes.DisableCards);
+                }
+                await revRem.setEnablePractice(true);
               }
-              await themeRem.setEnablePractice(false);
-              frozenCount++;
-            }
-          } catch (_) {}
+            } catch (_) {}
+          }
+          if (entry.cardThemeId) {
+            try {
+              const themeRem = await plugin.rem.findOne(entry.cardThemeId);
+              if (themeRem) {
+                if (await themeRem.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+                  await themeRem.removePowerup(BuiltInPowerupCodes.DisableCards);
+                }
+                await themeRem.setEnablePractice(true);
+                const descendants = (await themeRem.getDescendants()) || [];
+                for (const d of descendants) {
+                  if (await d.hasPowerup(BuiltInPowerupCodes.DisableCards)) {
+                    await d.removePowerup(BuiltInPowerupCodes.DisableCards);
+                  }
+                  await d.setEnablePractice(true);
+                }
+              }
+            } catch (_) {}
+          }
+        } else {
+          // НЕ изучен: отключаем
+          if (entry.reviewCardId) {
+            try {
+              const revRem = await plugin.rem.findOne(entry.reviewCardId);
+              if (revRem) {
+                if (!(await revRem.hasPowerup(BuiltInPowerupCodes.DisableCards))) {
+                  await revRem.addPowerup(BuiltInPowerupCodes.DisableCards);
+                }
+                await revRem.setEnablePractice(false);
+              }
+            } catch (_) {}
+          }
+          if (entry.cardThemeId) {
+            try {
+              const themeRem = await plugin.rem.findOne(entry.cardThemeId);
+              if (themeRem) {
+                if (!(await themeRem.hasPowerup(BuiltInPowerupCodes.DisableCards))) {
+                  await themeRem.addPowerup(BuiltInPowerupCodes.DisableCards);
+                }
+                await themeRem.setEnablePractice(false);
+                frozenCount++;
+              }
+            } catch (_) {}
+          }
         }
       }
 
-      await plugin.app.toast(`✅ Очередь очищена! Заморожено ${frozenCount} тем через API RemNote.`);
+      await plugin.app.toast(
+        `✅ Очередь очищена! Отключено неизученных тем: ${frozenCount}. Активно изученных тем в FSRS: ${activeCount}.`
+      );
     } catch (e) {
       await plugin.app.toast(`Ошибка: ${String(e)}`);
     } finally {
@@ -538,9 +577,9 @@ export const NoteSchedulerBar = () => {
                 padding: '4px 8px',
                 fontSize: '11px',
               }}
-              title="Заморозить все темы, кроме этой, чтобы в очереди повторения осталась только эта тема"
+              title="Отключить карточки всех тем, где конспекты ещё не были изучены (оставить только изученные)"
             >
-              ❄️ Очистить очередь (убрать лишнее)
+              ❄️ Отключить неизученное
             </button>
           </>
         ) : (
