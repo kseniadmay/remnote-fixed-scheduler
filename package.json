@@ -7,7 +7,7 @@
     "test": "node test_audit.js",
     "check-types": "tsc",
     "dev": "cross-env NODE_ENV=development webpack-dev-server --color --progress --no-open",
-    "build": "npx remnote-plugin validate && shx rm -rf dist && cross-env NODE_ENV=production webpack --color --progress && cd dist && bestzip ../PluginZip.zip ./*"
+    "build": "npx remnote-plugin validate && shx rm -rf dist && cross-env NODE_ENV=production webpack --color --progress && python package_clean_zip.py"
   },
   "dependencies": {
     "@remnote/plugin-sdk": "^0.0.46",
