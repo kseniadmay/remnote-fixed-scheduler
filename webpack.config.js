@@ -113,6 +113,7 @@ if (isProd) {
   config.devServer = {
     port: 8080,
     host: '0.0.0.0',
+    server: 'https',
     allowedHosts: 'all',
     open: false,
     hot: true,
