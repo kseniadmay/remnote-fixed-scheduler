@@ -19,6 +19,7 @@
     }
   ],
   "widgets": [
+    "index",
     "note_scheduler_bar"
   ]
 }
